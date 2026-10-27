@@ -112,6 +112,11 @@ com.google.android.gms
 grep -v '^#' debloat.txt | while read -r p; do adb shell pm uninstall --user 0 "$p" < /dev/null; done
 ```
 
+`com.google.android.gms` fails with `DELETE_FAILED_DEVICE_POLICY_MANAGER` when Google's Find My
+Device is an active device admin. It can stay: it does not block setting the device owner. To
+remove it anyway, turn it off first in Settings → Biometrics and security → Other security
+settings → Device admin apps.
+
 **Do not remove**: `com.android.systemui`, `com.android.settings`, `com.android.phone`,
 `com.android.shell`, any `com.android.providers.*` or `com.samsung.android.providers.*`,
 `com.sec.android.inputmethod` (keyboard), `com.samsung.android.knox.*`, or
