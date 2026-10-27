@@ -18,6 +18,7 @@ Unofficial; not affiliated with Flipper Devices. See [NOTICE](NOTICE).
 | 1 | Kiosk shell, LED renderer, `POST/DELETE /api/display/draw` | done |
 | 2 | `busy_timer` port, `/api/busy/*`, physical controls | |
 | 3 | Rest of the API, status WebSocket, bundled web UI | |
+| 3b | Bluetooth bridge for the official BUSY app (best effort) | |
 | 4 | QuickJS runtime for JS apps | |
 | 5 | Auto brightness, burn-in guard, presence, auto ON CALL | |
 
