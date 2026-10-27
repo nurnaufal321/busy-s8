@@ -5,7 +5,7 @@ import java.io.InputStream
 
 /**
  * Read-only access to the bundled firmware assets (vendor/ in this repo), addressed by
- * relative paths such as `shared/fonts/busy_regular_7.font`.
+ * relative paths such as `apps_assets/shared/fonts/busy_regular_7.font`.
  */
 fun interface AssetSource {
     fun open(path: String): InputStream?
@@ -21,28 +21,25 @@ fun interface ImageDecoder {
 }
 
 /**
- * The device's filesystem view, using firmware paths (storage.h). Read-only shared assets under
- * `/ext/apps_assets/shared/` come from the bundle; the rest of `/ext` is app-writable storage.
+ * The device's filesystem view, using firmware paths (storage.h). Built-in app assets under
+ * `/ext/apps_assets/` come from the bundle (vendor/apps_assets); the rest of `/ext` is
+ * app-writable storage.
  *
- * The firmware build converts stock PNGs to `.image` and frame zips to `.anim` (`./fbt resources`);
- * we keep the sources and map the converted names back to them here.
+ * The firmware build converts PNG to `.image`, frame zips to `.anim` and WAV to `.snd`
+ * (`./fbt resources`); the bundle keeps the sources and [bundledPath] maps the names back.
  */
 class DeviceStorage(private val assets: AssetSource, val extRoot: File) {
-    fun read(path: String): ByteArray? = when {
-        path.startsWith(SHARED) -> readShared(path.removePrefix(SHARED))
-        path.startsWith(EXT) -> resolveExt(path)?.takeIf { it.isFile }?.readBytes()
-        else -> null
+    fun read(path: String): ByteArray? {
+        bundledPath(path)?.let { bundled -> assets.open(bundled)?.use { return it.readBytes() } }
+        return resolveExt(path)?.takeIf { it.isFile }?.readBytes()
     }
 
-    private fun readShared(rel: String): ByteArray? {
-        val bundled = when {
-            rel.startsWith("images/") && rel.endsWith(".image") ->
-                "shared/images/external/" + rel.removePrefix("images/").removeSuffix(".image") + ".png"
-            rel.startsWith("animations/") && rel.endsWith(".anim") ->
-                "shared/animations/" + rel.removePrefix("animations/").removeSuffix(".anim") + ".zip"
-            else -> "shared/$rel"
-        }
-        return assets.open(bundled)?.use { it.readBytes() }
+    /** Bundle path for a built-in asset, or null if [path] is not under `/ext/apps_assets/`. */
+    fun bundledPath(path: String): String? {
+        if (!path.startsWith(APPS_ASSETS)) return null
+        val rel = "apps_assets/" + path.removePrefix(APPS_ASSETS)
+        return CONVERTED.entries.firstOrNull { rel.endsWith(it.key) }
+            ?.let { rel.removeSuffix(it.key) + it.value } ?: rel
     }
 
     /** Maps `/ext/...` into [extRoot], refusing anything that escapes it. */
@@ -54,8 +51,9 @@ class DeviceStorage(private val assets: AssetSource, val extRoot: File) {
 
     companion object {
         const val EXT = "/ext/"
-        const val SHARED = "${EXT}apps_assets/shared/"
-        fun sharedFont(name: String) = "${SHARED}fonts/$name.font"
+        const val APPS_ASSETS = "${EXT}apps_assets/"
+        const val SHARED = "${APPS_ASSETS}shared/"
+        private val CONVERTED = mapOf(".image" to ".png", ".anim" to ".zip", ".snd" to ".wav")
         fun sharedImage(name: String) = "${SHARED}images/$name"
         fun sharedAnim(name: String) = "${SHARED}animations/$name"
         fun userAssets(app: String, path: String) = "${EXT}user_assets/$app/$path"

@@ -16,4 +16,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "busy-s8"
 
-include(":core", ":server", ":app")
+include(":core", ":engine", ":server", ":app")

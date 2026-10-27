@@ -150,7 +150,7 @@ class FontRegistry(private val assets: AssetSource) {
 
     @Synchronized
     fun get(name: String): LvFont = cache.getOrPut(name) {
-        val bytes = assets.open("shared/fonts/$name.font")?.use { it.readBytes() } ?: error("missing font $name")
+        val bytes = assets.open("apps_assets/shared/fonts/$name.font")?.use { it.readBytes() } ?: error("missing font $name")
         LvFont.parse(bytes)
     }
 }
