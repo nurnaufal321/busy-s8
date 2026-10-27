@@ -43,4 +43,5 @@ dependencies {
     implementation(libs.compose.foundation)
     implementation(libs.activity.compose)
     implementation(libs.slf4j.nop)
+    testImplementation(libs.junit)
 }
