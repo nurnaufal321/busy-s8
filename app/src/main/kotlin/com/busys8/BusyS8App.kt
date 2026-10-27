@@ -49,6 +49,12 @@ class AndroidAssetSource(private val assets: AssetManager) : AssetSource {
     } catch (_: FileNotFoundException) {
         null
     }
+
+    /** AssetManager cannot tell files from directories; a non-empty listing marks a directory. */
+    override fun list(path: String): List<Pair<String, Boolean>>? {
+        val names = assets.list(path)?.takeIf { it.isNotEmpty() } ?: return null
+        return names.map { it to (assets.list("$path/$it")?.isNotEmpty() == true) }
+    }
 }
 
 object BitmapDecoder : ImageDecoder {

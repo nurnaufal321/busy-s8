@@ -8,6 +8,11 @@ import com.busys8.engine.apps.SoftOffApp
 import com.busys8.engine.apps.busy.BusyApp
 import com.busys8.engine.input.InputKey
 import com.busys8.engine.input.InputService
+import com.busys8.engine.jsapps.JsApps
+import com.busys8.engine.system.ApiTokens
+import com.busys8.engine.system.DeviceSettings
+import com.busys8.engine.system.FakePlatform
+import com.busys8.engine.system.Platform
 import com.busys8.engine.timer.AppConfig
 import com.busys8.engine.timer.BusyTimer
 import com.busys8.engine.timer.FileTimerStore
@@ -28,7 +33,12 @@ class Busybar(
     playSound: (String) -> Unit = {},
     clock: () -> Long = System::currentTimeMillis,
     switchPosition: InputKey = InputKey.BUSY,
+    val platform: Platform = FakePlatform(clock),
 ) {
+    val settings = DeviceSettings(File(dataDir, "settings.json"))
+    val tokens = ApiTokens(File(dataDir, "tokens.json"), clock)
+    val jsApps = JsApps(File(device.storage.extRoot, "user_assets"), dataDir, API_VERSION)
+
     private val hooks = LateHooks()
     val input = InputService(clock)
     val timer = BusyTimer(clock, FileTimerStore(File(dataDir, "busy_timer")), hooks)
@@ -37,7 +47,7 @@ class Busybar(
     private val appsMenu = PlaceholderApp("APPS", "JS apps arrive in phase 4")
     /** What the SETTINGS position shows (device name and addresses), set by the host. */
     @Volatile var infoLines: List<String> = emptyList()
-    private val settings = InfoApp { infoLines }
+    private val settingsApp = InfoApp { infoLines }
 
     val desktop = Desktop(
         input, timer, device.canvas,
@@ -47,7 +57,7 @@ class Busybar(
                 InputKey.CUSTOM -> busyApp.also { it.slot = ProfileSlot.CUSTOM }
                 InputKey.OFF -> softOff
                 InputKey.APPS -> appsMenu
-                else -> settings
+                else -> settingsApp
             }
         },
         busyApp = busyApp,
@@ -56,6 +66,7 @@ class Busybar(
     )
 
     init {
+        platform.applyBrightness(settings.data.brightness)
         busyApp.exitToDesktop = desktop::returnToSwitchApp
         hooks.bind(desktop)
         device.systemUi = desktop
@@ -79,5 +90,10 @@ class Busybar(
         override fun exitTimer() {
             target?.exitTimer() ?: run { pending = null }
         }
+    }
+
+    companion object {
+        /** The BUSY Bar HTTP API version this build implements (vendor/openapi.yaml). */
+        const val API_VERSION = "27.14.0"
     }
 }

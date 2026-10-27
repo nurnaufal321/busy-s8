@@ -7,8 +7,9 @@ import io.ktor.http.HttpMethod
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.application.Application
 import io.ktor.server.application.ApplicationCall
-import io.ktor.server.application.createApplicationPlugin
+import io.ktor.server.application.ApplicationCallPipeline
 import io.ktor.server.application.install
+import io.ktor.server.application.call
 import io.ktor.server.cio.CIO
 import io.ktor.server.engine.EmbeddedServer
 import io.ktor.server.engine.embeddedServer
@@ -48,22 +49,32 @@ class BusyServer(private val bar: Busybar, private val assets: AssetSource, priv
 }
 
 /** CORS headers on every reply and 200 for preflights, as web_server_i.h does. */
-private val FirmwareCors = createApplicationPlugin("FirmwareCors") {
-    onCall { call ->
+private fun Application.installFirmwareCors() {
+    intercept(ApplicationCallPipeline.Plugins) {
         call.response.headers.append("Access-Control-Allow-Origin", "*")
         call.response.headers.append("Access-Control-Allow-Headers", "*")
         if (call.request.httpMethod == HttpMethod.Options) {
             call.response.headers.append("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE")
             call.respondText("", status = HttpStatusCode.OK)
+            finish()
         }
     }
 }
 
 fun Application.module(bar: Busybar, assets: AssetSource) {
     val device = bar.device
-    install(FirmwareCors)
+    installFirmwareCors()
+    installFirmwareAuth(bar)
+    install(io.ktor.server.websocket.WebSockets) { pingPeriodMillis = 10_000 }
+    val hub = StateHub(bar)
     routing {
         busyRoutes(bar)
+        systemRoutes(bar)
+        accessRoutes(bar)
+        storageRoutes(bar)
+        appsRoutes(bar)
+        stubRoutes(bar)
+        statusStream(bar, hub)
         inputRoutes(bar)
 
         get("/openapi.yaml") {
