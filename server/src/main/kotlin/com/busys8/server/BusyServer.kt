@@ -1,7 +1,7 @@
 package com.busys8.server
 
 import com.busys8.core.AssetSource
-import com.busys8.core.BusyDevice
+import com.busys8.engine.Busybar
 import io.ktor.http.ContentType
 import io.ktor.http.HttpMethod
 import io.ktor.http.HttpStatusCode
@@ -29,11 +29,11 @@ import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 
 /** The BUSY Bar HTTP API (web_server/http_api/) served from the phone. */
-class BusyServer(private val device: BusyDevice, private val assets: AssetSource, private val port: Int = DEFAULT_PORT) {
+class BusyServer(private val bar: Busybar, private val assets: AssetSource, private val port: Int = DEFAULT_PORT) {
     private var engine: EmbeddedServer<*, *>? = null
 
     fun start() {
-        engine = embeddedServer(CIO, port = port, host = "0.0.0.0") { module(device, assets) }.start(wait = false)
+        engine = embeddedServer(CIO, port = port, host = "0.0.0.0") { module(bar, assets) }.start(wait = false)
     }
 
     fun stop() {
@@ -59,9 +59,13 @@ private val FirmwareCors = createApplicationPlugin("FirmwareCors") {
     }
 }
 
-fun Application.module(device: BusyDevice, assets: AssetSource) {
+fun Application.module(bar: Busybar, assets: AssetSource) {
+    val device = bar.device
     install(FirmwareCors)
     routing {
+        busyRoutes(bar)
+        inputRoutes(bar)
+
         get("/openapi.yaml") {
             val spec = assets.open("openapi.yaml")?.use { it.readBytes() }
             if (spec == null) call.replyError(404, "Not Found")
@@ -105,7 +109,7 @@ fun Application.module(device: BusyDevice, assets: AssetSource) {
     }
 }
 
-private suspend fun ApplicationCall.jsonBody(): JsonElement? =
+internal suspend fun ApplicationCall.jsonBody(): JsonElement? =
     runCatching { Json.parseToJsonElement(receiveText()) }.getOrNull()
 
 internal suspend fun ApplicationCall.reply(code: Int, error: String?) =

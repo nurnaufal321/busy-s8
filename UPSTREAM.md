@@ -20,17 +20,18 @@ BUSY S8 tracks a fixed version of the [busy-app](https://github.com/busy-app) re
 ### Copied verbatim (`vendor/`)
 | vendor path | firmware path | Licence |
 |---|---|---|
-| `shared/fonts/*.font` | `assets/shared/fonts/` (lv_font_conv output) | OFL-1.1 |
-| `shared/images`, `images` | `assets/shared/images`, `assets/images` (PNG sources) | CC-BY-SA-4.0 |
-| `shared/animations`, `animations` | `assets/shared/animations`, `assets/animations` (frame zips) | CC-BY-SA-4.0 |
-| `shared/sounds`, `sounds` | `assets/shared/sounds`, `assets/sounds` | CC-BY-SA-4.0 |
+| `apps_assets/shared/fonts/*.font` | `assets/shared/fonts/` (lv_font_conv output) | OFL-1.1 |
+| `apps_assets/shared/{images,animations,sounds}` | `assets/shared/...` (PNG, frame zips, WAV) | CC-BY-SA-4.0 |
+| `apps_assets/<app>/{images,animations,sounds}` | `assets/images/external/<app>`, `assets/animations/<app>`, `assets/sounds/<app>` | CC-BY-SA-4.0 |
+| `apps_assets/busy/themes` | `applications/main/busy/resources/apps_assets/busy/themes` | GPL-2.0-or-later |
 | `frontend/` | `assets/frontend-build/` (prebuilt web UI) | GPL-2.0-or-later |
 | `openapi/*.yaml` | `applications/services/web_server/openapi/` | GPL-2.0-or-later |
 | `openapi.yaml` | merged by `scripts/openapi_merge.py`, served at `/openapi.yaml` | GPL-2.0-or-later |
 | `proto/` | busybar-protobuf | see that repo |
 
-The firmware converts stock PNGs to LVGL `.image` and frame zips to `.anim` at build time;
-`DeviceStorage` maps those device names back to the bundled sources.
+`vendor/apps_assets` mirrors the device's `/ext/apps_assets`. The firmware build converts PNG
+to LVGL `.image`, frame zips to `.anim` and WAV to `.snd`; `DeviceStorage` maps those device
+names back to the bundled sources.
 
 ### Ported to Kotlin
 | BUSY S8 | Firmware source | Notes |
@@ -40,4 +41,9 @@ The firmware converts stock PNGs to LVGL `.image` and frame zips to `.anim` at b
 | `core/.../Canvas.kt` | `services/canvas/canvas.c` | Ownership, priority, deferral (1.5 s), timeouts |
 | `core/.../CanvasRenderer.kt` | `services/canvas/canvas_widgets.c`, `gui/modules/{label,countdown}.c` | Anchor placement, label metrics, circular scroll, countdown format |
 | `core/.../Xpm.kt` | `lib/xpm` behaviour as documented in `assets.yaml` | XPM2 subset |
-| `server/.../BusyServer.kt` | `web_server/web_server_i.h` | Reply bodies, CORS headers |
+| `core/.../Anim.kt` | `gui/modules/anim_player.c`, `lib/anim_file` | Plays the frame zips directly; section and loop semantics |
+| `engine/.../timer/*` | `services/busy_timer/*` | State machine, snapshot/profile JSON, defaults, persistence; no MQTT/Matter |
+| `engine/.../input/Input.kt` | `services/input/input.c` | Short/long/repeat timing |
+| `engine/.../apps/Desktop.kt` | `services/desktop`, `services/canvas` input handling, `busy_timer_util.c` | Mode switch → app, canvas input precedence |
+| `engine/.../apps/busy/*` | `applications/main/busy` (scenes, widgets, presets) | All session scenes; no transitions or setup screens yet |
+| `server/.../BusyServer.kt`, `BusyRoutes.kt` | `web_server/web_server_i.h`, `http_api/api_busy.c`, `api_input.c` | Reply bodies, CORS headers |

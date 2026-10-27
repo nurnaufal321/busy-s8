@@ -3,6 +3,7 @@ package com.busys8.server
 import com.busys8.core.BusyDevice
 import com.busys8.core.FileAssetSource
 import com.busys8.core.ImageDecoder
+import com.busys8.engine.Busybar
 import io.ktor.client.request.delete
 import io.ktor.client.request.get
 import io.ktor.client.request.options
@@ -22,8 +23,8 @@ class DrawRoutesTest {
     private val assets = FileAssetSource(File(System.getProperty("busys8.vendor")))
 
     private fun app(block: suspend io.ktor.server.testing.ApplicationTestBuilder.() -> Unit) = testApplication {
-        val device = BusyDevice(assets, tmp.root, ImageDecoder { null })
-        application { module(device, assets) }
+        val device = BusyDevice(assets, tmp.newFolder("ext"), ImageDecoder { null })
+        application { module(Busybar(device, tmp.newFolder("data")), assets) }
         block()
     }
 

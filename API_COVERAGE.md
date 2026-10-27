@@ -32,11 +32,11 @@ Also served: `GET /openapi.yaml` (the merged spec, as the firmware does).
 | BLE | POST | `/api/ble/enable` |  | missing | 3 |
 | BLE | DELETE | `/api/ble/pairing` |  | missing | 3 |
 | BLE | GET | `/api/ble/status` |  | missing | 3 |
-| Busy | GET | `/api/busy/profiles/{slot}` | getBusyProfile | missing | 2 |
-| Busy | PUT | `/api/busy/profiles/{slot}` | setBusyProfile | missing | 2 |
-| Busy | GET | `/api/busy/snapshot` | getBusySnapshot | missing | 2 |
-| Busy | PUT | `/api/busy/snapshot` | setBusySnapshot | missing | 2 |
-| Input | POST | `/api/input` | setInputKey | missing | 2 |
+| Busy | GET | `/api/busy/profiles/{slot}` | getBusyProfile | implemented | 2 |
+| Busy | PUT | `/api/busy/profiles/{slot}` | setBusyProfile | implemented | 2 |
+| Busy | GET | `/api/busy/snapshot` | getBusySnapshot | implemented | 2 |
+| Busy | PUT | `/api/busy/snapshot` | setBusySnapshot | implemented | 2 |
+| Input | POST | `/api/input` | setInputKey | implemented | 2 |
 | Settings | GET | `/api/access` | getHttpAccess | missing | 3 |
 | Settings | POST | `/api/access` | setHttpAccess | missing | 3 |
 | Settings | DELETE | `/api/access/tokens` | deleteAllAccessTokens | missing | 3 |
@@ -89,4 +89,10 @@ Also served: `GET /openapi.yaml` (the merged spec, as the firmware does).
 | Wi-Fi | GET | `/api/wifi/networks` | getWifiNetworks | missing | 3 |
 | Wi-Fi | GET | `/api/wifi/status` |  | missing | 3 |
 
-2 of 81 operations implemented.
+7 of 81 operations implemented.
+
+## Notes
+
+- `/api/busy/*`: no MQTT/cloud sync, so snapshots and profiles are local to the phone. Matter (`trigger_smart_home`) is stored but has no effect.
+- `/api/display/draw` `animation` elements play the bundled frame zips; uploaded `.anim` files (the firmware's compressed format) are not decoded yet (phase 3, with asset upload).
+- `/api/input` also accepts the switch positions (`busy`, `custom`, `off`, `apps`, `settings`), which move the emulated mode switch.

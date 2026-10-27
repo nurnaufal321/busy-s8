@@ -25,12 +25,12 @@ class BusyService : Service() {
     override fun onCreate() {
         super.onCreate()
         startForeground(NOTIFICATION_ID, notification())
-        val app = BusyApp.of(this)
+        val app = BusyS8App.of(this)
         app.device.start(scope)
-        server = BusyServer(app.device, app.assetSource).also { it.start() }
+        server = BusyServer(app.bar, app.assetSource).also { it.start() }
         scope.launch {
             while (isActive) {
-                app.device.idleLines = listOf("BUSY S8") + localIpv4().map { "$it:${BusyServer.DEFAULT_PORT}" }
+                app.bar.infoLines = listOf("BUSY S8") + localIpv4().map { "$it:${BusyServer.DEFAULT_PORT}" }
                 delay(5000)
             }
         }

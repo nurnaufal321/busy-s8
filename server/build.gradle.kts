@@ -6,7 +6,7 @@ plugins {
 kotlin { jvmToolchain(17) }
 
 dependencies {
-    api(project(":core"))
+    api(project(":engine"))
     api(libs.ktor.server.core)
     api(libs.ktor.server.cio)
     testImplementation(libs.junit)

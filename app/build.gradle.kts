@@ -18,6 +18,8 @@ android {
     }
 
     sourceSets["main"].assets.srcDir(rootProject.file("vendor"))
+    // SoundPool reads WAVs through file descriptors, which needs them stored uncompressed.
+    androidResources { noCompress += "wav" }
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17

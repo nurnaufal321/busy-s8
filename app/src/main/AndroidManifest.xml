@@ -7,7 +7,7 @@
     <uses-permission android:name="android.permission.WAKE_LOCK" />
 
     <application
-        android:name=".BusyApp"
+        android:name=".BusyS8App"
         android:allowBackup="false"
         android:label="BUSY S8"
         android:theme="@android:style/Theme.Black.NoTitleBar.Fullscreen">

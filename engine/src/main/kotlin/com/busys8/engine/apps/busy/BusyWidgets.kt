@@ -118,10 +118,13 @@ class TimerLabel {
     }
 }
 
-/** widgets/pause_overlay.c: dims the front display and blinks "PAUSED" with a pause icon. */
+/**
+ * widgets/pause_overlay.c: dims the front display and blinks "PAUSED" with a pause icon. The
+ * firmware also blurs the background fully; without a blur, a stronger dim keeps the text legible.
+ */
 class PauseOverlay(private val images: ImageLoader) {
     fun render(g: Gfx, sinceMs: Long, nowMs: Long) {
-        g.fill(0, 0, 72, 16, Gfx.rgb(0x5F5F5F), Blend.MULTIPLY)
+        g.fill(0, 0, 72, 16, Gfx.rgb(0x262626), Blend.MULTIPLY)
         val elapsed = nowMs - sinceMs
         val blinkOn = elapsed < BLINK_DELAY_MS || ((elapsed - BLINK_DELAY_MS) / BLINK_PERIOD_MS) % 2 == 0L
         if (!blinkOn) return

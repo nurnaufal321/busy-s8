@@ -16,11 +16,11 @@ Unofficial; not affiliated with Flipper Devices. See [NOTICE](NOTICE).
 | Phase | Scope | State |
 |---|---|---|
 | 1 | Kiosk shell, LED renderer, `POST/DELETE /api/display/draw` | done |
-| 2 | `busy_timer` port, `/api/busy/*`, physical controls | |
+| 2 | `busy_timer` port, BUSY app, `/api/busy/*`, `/api/input`, phone controls, burn-in protection | done |
 | 3 | Rest of the API, status WebSocket, bundled web UI | |
 | 3b | Bluetooth bridge for the official BUSY app (best effort) | |
 | 4 | QuickJS runtime for JS apps | |
-| 5 | Auto brightness, burn-in guard, presence, auto ON CALL | |
+| 5 | Auto brightness, presence, auto ON CALL | |
 
 Endpoint-level status: [API_COVERAGE.md](API_COVERAGE.md). Upstream versions:
 [UPSTREAM.md](UPSTREAM.md).
@@ -29,13 +29,34 @@ Endpoint-level status: [API_COVERAGE.md](API_COVERAGE.md). Upstream versions:
 
 | Module | Kind | Contents |
 |---|---|---|
-| `core` | JVM | Framebuffers, LVGL font reader, draw-element parser, canvas service, renderer |
+| `core` | JVM | Framebuffers, LVGL font reader, animation player, draw-element parser, canvas service, renderer |
+| `engine` | JVM | `busy_timer` port, input service, desktop/mode switch, BUSY app and other built-in apps |
 | `server` | JVM | Ktor (CIO) HTTP API |
 | `app` | Android | Kiosk activity, Compose LED panel, foreground service, device-owner policies |
 | `vendor/` | data | Pinned upstream assets, web UI, OpenAPI spec, protobufs |
 | `upstream/` | scripts | `fetch.sh` (clone pinned repos), `sync.sh` (refresh `vendor/`) |
 
-`core` and `server` are plain JVM modules, so they are tested on the desktop without an emulator.
+`core`, `engine` and `server` are plain JVM modules, so they are tested on the desktop without an
+emulator. `./gradlew :engine:test` also writes previews of the BUSY app's screens to
+`engine/build/previews/`.
+
+## Controls
+
+| Phone | Bar |
+|---|---|
+| Volume up / down | Dial clockwise / counter-clockwise (BUSY app: ±5 minutes) |
+| Tap | START (start, pause, resume) |
+| Long-press | BACK (stop a session; resume when paused) |
+| Swipe down / up | Mode switch to the next / previous position: BUSY, CUSTOM, OFF, APPS, SETTINGS |
+| Wave over the proximity sensor | OK (dial button: skip the current interval) |
+| Bixby key, if One UI delivers it | Mode switch, next position |
+
+OFF is the bar's sleep: the screen goes fully black. SETTINGS shows the phone's address until
+the settings menu is ported. On the emulator, a keyboard works too: arrows, Enter = OK,
+Space = START, Esc/Backspace = BACK, 1–5 = switch positions.
+
+The panel guards against AMOLED burn-in: the LED grid orbits by half an LED every 2 minutes,
+and static content dims to 40% after 5 minutes.
 
 ## Build
 
@@ -79,7 +100,7 @@ curl -X POST localhost:8080/api/display/draw -d '{"application_name":"curl","ele
 ## Run on the phone
 
 See [DEVICE_SETUP.md](DEVICE_SETUP.md): factory reset without accounts, debloat, install, set
-device owner. While idle, the display scrolls the address to use (`<ip>:8080`).
+device owner. Swipe to SETTINGS to see the address to use (`<ip>:8080`).
 
 ## Refreshing upstream
 

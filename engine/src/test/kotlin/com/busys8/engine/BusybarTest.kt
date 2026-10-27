@@ -30,7 +30,7 @@ class BusybarTest {
     private val sounds = ArrayList<String>()
     private val bar by lazy {
         val device = BusyDevice(FileAssetSource(File(System.getProperty("busys8.vendor"))), tmp.newFolder("ext"), decoder) { now }
-        Busybar(device, tmp.newFolder("data"), { sounds += it.substringAfterLast('/') }) { now }
+        Busybar(device, File(tmp.root, "data"), { sounds += it.substringAfterLast('/') }, clock = { now })
     }
     private val previews = File("build/previews").apply { mkdirs() }
 
@@ -128,6 +128,25 @@ class BusybarTest {
         run(500)
         assertEquals(TimerState.IDLE, bar.timer.state)
         assertEquals(0, bar.desktop.loaderPriority)
+    }
+
+    @Test
+    fun `a paused session stays paused across a restart`() {
+        run(500)
+        press(InputKey.START)
+        run(3000)
+        press(InputKey.START)
+        run(500)
+        assertTrue(bar.timer.lastKnownSnapshot.isPaused)
+        val device = BusyDevice(FileAssetSource(File(System.getProperty("busys8.vendor"))), tmp.newFolder("ext2"), decoder) { now }
+        val restarted = Busybar(device, File(tmp.root, "data"), clock = { now })
+        repeat(10) {
+            now += 33
+            runBlocking { device.post(this) {} }
+        }
+        assertTrue(restarted.timer.lastKnownSnapshot.isPaused)
+        assertTrue(!restarted.timer.isRunning)
+        assertEquals(LoaderPriority.BLOCKING, restarted.desktop.loaderPriority)
     }
 
     @Test

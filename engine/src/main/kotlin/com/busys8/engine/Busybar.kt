@@ -2,6 +2,7 @@ package com.busys8.engine
 
 import com.busys8.core.BusyDevice
 import com.busys8.engine.apps.Desktop
+import com.busys8.engine.apps.InfoApp
 import com.busys8.engine.apps.PlaceholderApp
 import com.busys8.engine.apps.SoftOffApp
 import com.busys8.engine.apps.busy.BusyApp
@@ -26,6 +27,7 @@ class Busybar(
     dataDir: File,
     playSound: (String) -> Unit = {},
     clock: () -> Long = System::currentTimeMillis,
+    switchPosition: InputKey = InputKey.BUSY,
 ) {
     private val hooks = LateHooks()
     val input = InputService(clock)
@@ -33,7 +35,9 @@ class Busybar(
     private val busyApp = BusyApp(timer, device.storage, device.images, device.anims, playSound, clock)
     private val softOff = SoftOffApp()
     private val appsMenu = PlaceholderApp("APPS", "JS apps arrive in phase 4")
-    private val settings = PlaceholderApp("SETTINGS", "use the web UI for now")
+    /** What the SETTINGS position shows (device name and addresses), set by the host. */
+    @Volatile var infoLines: List<String> = emptyList()
+    private val settings = InfoApp { infoLines }
 
     val desktop = Desktop(
         input, timer, device.canvas,
@@ -48,6 +52,7 @@ class Busybar(
         },
         busyApp = busyApp,
         clock = clock,
+        initialPosition = switchPosition,
     )
 
     init {

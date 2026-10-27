@@ -257,11 +257,11 @@ class BusyApp(
         override fun enter(nowMs: Long) {
             themeBg = themeBackground(config.theme)
             labelCycleStartMs = nowMs
-            if (showTimerRequested) timer.notifyInitialState() else timer.start(slot)
-        }
-
-        override fun exit() {
+            // Consumed here rather than on exit: a restored session can enter this scene twice
+            // at startup, and starting again would resume a paused timer.
+            val requested = showTimerRequested
             showTimerRequested = false
+            if (requested) timer.notifyInitialState() else timer.start(slot)
         }
 
         override fun onTimer(event: TimerEvent) {
