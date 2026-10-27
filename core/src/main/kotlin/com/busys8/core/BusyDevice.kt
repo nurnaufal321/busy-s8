@@ -88,15 +88,27 @@ class BusyDevice(
         }
     }
 
+    /** Until the native apps arrive, the idle front display scrolls [idleLines] (name and address). */
     private fun drawIdle() {
+        if (idleLines.isEmpty()) return
         val font = fonts.get(ApiFont.NORMAL.file)
-        val clip = CanvasRenderer.Clip(0, 0, Display.BACK.canvasWidth, Display.BACK.canvasHeight)
-        idleLines.forEachIndexed { i, line ->
-            renderer.drawLine(back, clip, font, line, 2, 2 + i * font.lineHeight, IDLE_TEXT)
+        val text = idleLines.joinToString(IDLE_SEPARATOR)
+        val clip = CanvasRenderer.Clip(0, 0, Display.FRONT.width, Display.FRONT.height)
+        val top = (Display.FRONT.height - font.lineHeight) / 2
+        val width = font.textWidth(text)
+        if (width <= Display.FRONT.width) {
+            renderer.drawLine(front, clip, font, text, (Display.FRONT.width - width) / 2, top, IDLE_TEXT)
+            return
         }
+        val period = width + font.textWidth(IDLE_SEPARATOR)
+        val shift = ((clock() * IDLE_SCROLL_PX_PER_S / 1000) % period).toInt()
+        renderer.drawLine(front, clip, font, text, -shift, top, IDLE_TEXT)
+        renderer.drawLine(front, clip, font, text, period - shift, top, IDLE_TEXT)
     }
 
     private companion object {
-        const val IDLE_TEXT = 0xFF808080.toInt()
+        const val IDLE_TEXT = 0xFF606060.toInt()
+        const val IDLE_SEPARATOR = "   "
+        const val IDLE_SCROLL_PX_PER_S = 12L
     }
 }

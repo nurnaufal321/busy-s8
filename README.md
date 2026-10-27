@@ -1,9 +1,13 @@
 # BUSY S8
 
 A self-contained [BUSY Bar](https://busy.app) emulator for a Samsung Galaxy S8+ (SM-G955,
-Android 9). One APK renders the bar's 72×16 RGB front display and 160×80 back display on the
-phone's AMOLED panel and serves the BUSY Bar HTTP API on the LAN, so the upstream web UI,
-JS apps, busylib-py/ts, busy-cli and the Home Assistant integration can talk to the phone.
+Android 9). One APK shows the bar's 72×16 RGB front display on the phone's AMOLED panel and
+serves the BUSY Bar HTTP API on the LAN, so the upstream web UI, JS apps, busylib-py/ts,
+busy-cli and the Home Assistant integration can talk to the phone.
+
+The phone has one screen, and it faces the room like the bar's front display. The 160×80 back
+display (the side facing the bar's owner) is still emulated: apps draw to it through the API,
+and it is visible in the web UI's screen stream, but it isn't shown on the phone.
 
 Unofficial; not affiliated with Flipper Devices. See [NOTICE](NOTICE).
 
@@ -74,7 +78,7 @@ curl -X POST localhost:8080/api/display/draw -d '{"application_name":"curl","ele
 ## Run on the phone
 
 See [DEVICE_SETUP.md](DEVICE_SETUP.md): factory reset without accounts, debloat, install, set
-device owner. The idle back display shows the address to use (`<ip>:8080`).
+device owner. While idle, the display scrolls the address to use (`<ip>:8080`).
 
 ## Refreshing upstream
 
