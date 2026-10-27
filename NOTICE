@@ -1,0 +1,16 @@
+BUSY S8
+Copyright 2026 BUSY S8 contributors. Licensed under GPL-2.0-or-later (see LICENSE).
+
+BUSY S8 is an unofficial emulator of the BUSY Bar. It is not affiliated with or endorsed by
+Flipper Devices / Flipper FZCO. "BUSY Bar" is their trademark.
+
+It contains material from the BUSY Bar firmware (https://github.com/busy-app/busybar-firmware),
+Copyright 2024-2026 Flipper FZCO:
+  - Kotlin ports of firmware services and the prebuilt web UI: GPL-2.0-or-later
+  - Images, animations and sounds: CC-BY-SA-4.0 (vendor/CC-BY-SA-4.0.txt). Changes: none; the
+    firmware's build-time conversions are done at runtime instead.
+  - BUSY pixel fonts, derived from Ark Pixel Font, Copyright 2021 TakWolf: OFL-1.1
+    (vendor/OFL-1.1.txt)
+  - Lana Pixel font, Copyright 2020-2023 eishiya: OFL-1.1
+
+REUSE.toml records the licence of each path.

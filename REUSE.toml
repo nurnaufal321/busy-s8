@@ -1,0 +1,31 @@
+version = 1
+
+[[annotations]]
+path = ["**"]
+precedence = "aggregate"
+SPDX-FileCopyrightText = "2026 BUSY S8 contributors"
+SPDX-License-Identifier = "GPL-2.0-or-later"
+
+[[annotations]]
+path = ["vendor/frontend/**", "vendor/openapi/**", "vendor/openapi.yaml"]
+precedence = "override"
+SPDX-FileCopyrightText = "2024-2026 Flipper FZCO"
+SPDX-License-Identifier = "GPL-2.0-or-later"
+
+[[annotations]]
+path = ["vendor/shared/images/**", "vendor/shared/animations/**", "vendor/shared/sounds/**", "vendor/images/**", "vendor/animations/**", "vendor/sounds/**"]
+precedence = "override"
+SPDX-FileCopyrightText = "2024-2026 Flipper FZCO"
+SPDX-License-Identifier = "CC-BY-SA-4.0"
+
+[[annotations]]
+path = ["vendor/shared/fonts/busy_*", "vendor/shared/fonts/ttf/busy_*"]
+precedence = "override"
+SPDX-FileCopyrightText = ["2021 TakWolf (https://ark-pixel-font.takwolf.com/)", "2024-2026 Flipper FZCO"]
+SPDX-License-Identifier = "OFL-1.1"
+
+[[annotations]]
+path = ["vendor/shared/fonts/lana_pixel*", "vendor/shared/fonts/ttf/lana_pixel*"]
+precedence = "override"
+SPDX-FileCopyrightText = "2020-2023 eishiya (https://mastodon.art/@eishiya)"
+SPDX-License-Identifier = "OFL-1.1"
