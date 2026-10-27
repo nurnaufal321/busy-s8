@@ -48,6 +48,9 @@ class BusyTimer(
     var state = TimerState.IDLE
         private set
     private var app = AppConfig.EMPTY
+
+    /** BUSY app settings of the current session. */
+    val appConfig get() = app
     /** null mirrors BusyTimerModeMax: nothing configured (after a NOT_STARTED snapshot). */
     private var mode: TimerMode? = null
     private var config = TimerConfig(TimerMode.INFINITE)

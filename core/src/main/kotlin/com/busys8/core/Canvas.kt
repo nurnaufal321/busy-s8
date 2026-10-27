@@ -60,6 +60,11 @@ class Canvas(
         return clearIds(ids)
     }
 
+    /** Forgets a deferred request whose caller has given up waiting. */
+    fun dropDeferred() {
+        deferred = null
+    }
+
     /** A mode-switch press: the canvas exits (CanvasSrvEventExit). */
     fun exit() {
         if (isOpen) clearIds(null)

@@ -5,14 +5,21 @@ package com.busys8.core
  * their geometry: label sizing from LVGL font metrics, align-to-anchor placement
  * (canvas_widget_reanchor), circular scrolling and rounded rectangles.
  */
-class CanvasRenderer(private val fonts: FontRegistry, private val images: ImageLoader) {
+class CanvasRenderer(private val fonts: FontRegistry, private val images: ImageLoader, private val anims: AnimLoader) {
+    /** One player per animation element id, plus the request it is playing. */
+    private val players = HashMap<String, Pair<AnimPlayer, Element.Animation>>()
 
     /** Paints all canvas widgets onto [front] and [back]. The overlay background is opaque black. */
     fun render(canvas: Canvas, front: Framebuffer, back: Framebuffer, nowMs: Long) {
-        if (!canvas.isOpen) return
+        if (!canvas.isOpen) {
+            players.clear()
+            return
+        }
         front.clear()
         fillRect(back, 0, 0, Display.BACK.canvasWidth, Display.BACK.canvasHeight, Framebuffer.BLACK)
-        for (w in canvas.widgets()) {
+        val widgets = canvas.widgets()
+        players.keys.retainAll(widgets.map { it.element.id }.toSet())
+        for (w in widgets) {
             val fb = if (w.element.display == Display.FRONT) front else back
             val clip = Clip(0, 0, w.element.display.canvasWidth, w.element.display.canvasHeight)
             when (val c = w.element.content) {
@@ -21,9 +28,25 @@ class CanvasRenderer(private val fonts: FontRegistry, private val images: ImageL
                 is Element.Rectangle -> drawRectangle(fb, clip, w.element, c)
                 is Element.Image -> images.load(c.path)?.let { drawImage(fb, clip, w.element, it, c.opacity) }
                 is Element.Raw -> drawImage(fb, clip, w.element, c.image, c.opacity)
-                is Element.Animation -> Unit // .anim playback lands with the asset decoders
+                is Element.Animation -> player(w.element.id, c, nowMs)?.let { drawImage(fb, clip, w.element, it.frame(nowMs), c.opacity) }
             }
         }
+    }
+
+    /** Re-sending an element keeps its player, switching section as the request asks. */
+    private fun player(id: String, a: Element.Animation, nowMs: Long): AnimPlayer? {
+        val existing = players[id]
+        if (existing != null && existing.first.file === anims.load(a.path)) {
+            if (existing.second != a) {
+                existing.first.play(a.section, a.loop, a.awaitPreviousEnd, nowMs)
+                players[id] = existing.first to a
+            }
+            return existing.first
+        }
+        val file = anims.load(a.path) ?: return null
+        val p = AnimPlayer(file, nowMs).also { it.play(a.section, a.loop, afterCurrent = false, nowMs) }
+        players[id] = p to a
+        return p
     }
 
     data class Clip(val x0: Int, val y0: Int, val x1: Int, val y1: Int) {
@@ -62,24 +85,6 @@ class CanvasRenderer(private val fonts: FontRegistry, private val images: ImageL
         if (elapsed <= 0 || cycleMs <= 0) return 0
         val inCycle = elapsed % (cycleMs + t.scrollRepeatDelay)
         return if (inCycle >= cycleMs) 0 else (inCycle * period / cycleMs).toInt()
-    }
-
-    /** Draws one line of [text] whose line box starts at ([x], [lineTop]), clipped to [clip]. */
-    fun drawLine(fb: Framebuffer, clip: Clip, font: LvFont, text: String, x: Int, lineTop: Int, color: Int) {
-        var pen = x
-        for (ch in text) {
-            val g = font.glyph(ch.code)
-            if (g != null) {
-                val gx = pen + g.ofsX
-                val gy = lineTop + (font.lineHeight - font.baseLine) - g.height - g.ofsY
-                for (row in 0 until g.height) for (col in 0 until g.width) {
-                    val a = g.alpha[row * g.width + col].toInt() and 0xFF
-                    if (a == 0 || !clip.contains(gx + col, gy + row)) continue
-                    fb.blend(gx + col, gy + row, Argb.withOpacity(color, a))
-                }
-                pen += g.advance
-            }
-        }
     }
 
     /** LVGL-style line breaking: break after spaces, split words wider than the line. */
@@ -187,6 +192,24 @@ class CanvasRenderer(private val fonts: FontRegistry, private val images: ImageL
     companion object {
         /** LV_LABEL_WAIT_CHAR_COUNT: gap between repetitions in circular scroll, in spaces. */
         const val LABEL_WAIT_CHAR_COUNT = 3
+
+        /** Draws one line of [text] whose line box starts at ([x], [lineTop]), clipped to [clip]. */
+        fun drawLine(fb: Framebuffer, clip: Clip, font: LvFont, text: String, x: Int, lineTop: Int, color: Int) {
+            var pen = x
+            for (ch in text) {
+                val g = font.glyph(ch.code)
+                if (g != null) {
+                    val gx = pen + g.ofsX
+                    val gy = lineTop + (font.lineHeight - font.baseLine) - g.height - g.ofsY
+                    for (row in 0 until g.height) for (col in 0 until g.width) {
+                        val a = g.alpha[row * g.width + col].toInt() and 0xFF
+                        if (a == 0 || !clip.contains(gx + col, gy + row)) continue
+                        fb.blend(gx + col, gy + row, Argb.withOpacity(color, a))
+                    }
+                    pen += g.advance
+                }
+            }
+        }
 
         /** countdown.c formatting, including its `hours % 60`. */
         fun countdownText(c: Element.Countdown, nowS: Long): String {
