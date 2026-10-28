@@ -93,14 +93,21 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-/** Tap = START, long-press = BACK (fires while held), vertical swipe = mode switch. */
+/**
+ * Tap = START, long-press = BACK (fires while held), vertical swipe = mode switch, horizontal
+ * drag = the dial: one click per [DIAL_STEP_DP] travelled, right = clockwise, so a long drag
+ * scrolls like turning the encoder.
+ */
 private suspend fun androidx.compose.ui.input.pointer.PointerInputScope.detectBarGestures(controls: PhoneControls) {
     val swipeMin = SWIPE_MIN_DP.dp.toPx()
+    val dialStep = DIAL_STEP_DP.dp.toPx()
     awaitEachGesture {
         val down = awaitFirstDown()
         val slop = viewConfiguration.touchSlop
         var moved = Offset.Zero
         var longFired = false
+        var dialing = false
+        var dialCarry = 0f
         while (true) {
             val stillForLong = !longFired && moved.getDistance() <= slop
             val waitMs = LONG_PRESS_MS - (SystemClock.uptimeMillis() - down.uptimeMillis)
@@ -113,10 +120,24 @@ private suspend fun androidx.compose.ui.input.pointer.PointerInputScope.detectBa
                 continue
             }
             val change = event.changes.first()
-            moved += change.positionChange()
+            val delta = change.positionChange()
+            moved += delta
+            if (!longFired && !dialing && abs(moved.x) > slop && abs(moved.x) > abs(moved.y)) {
+                dialing = true
+                dialCarry = moved.x
+            } else if (dialing) {
+                dialCarry += delta.x
+            }
+            if (dialing) {
+                while (abs(dialCarry) >= dialStep) {
+                    val dir = if (dialCarry > 0) 1 else -1
+                    controls.dial(dir)
+                    dialCarry -= dir * dialStep
+                }
+            }
             if (!change.pressed) break
         }
-        if (longFired) return@awaitEachGesture
+        if (longFired || dialing) return@awaitEachGesture
         when {
             abs(moved.y) >= swipeMin && abs(moved.y) > 2 * abs(moved.x) -> controls.moveSwitch(if (moved.y > 0) 1 else -1)
             moved.getDistance() <= slop -> controls.tap()
@@ -158,4 +179,5 @@ private fun SwitchStrip(controls: PhoneControls) {
 
 private const val LONG_PRESS_MS = 600L
 private const val SWIPE_MIN_DP = 60
+private const val DIAL_STEP_DP = 60
 private const val STRIP_VISIBLE_MS = 1500L

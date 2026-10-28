@@ -23,6 +23,7 @@ import kotlinx.coroutines.flow.StateFlow
  * | Tap                       | START                                 |
  * | Long-press                | BACK                                  |
  * | Swipe down / up           | Mode switch to the next / previous position |
+ * | Drag left / right         | Encoder, one click per 60 dp          |
  * | Proximity-sensor wave     | OK (encoder button)                   |
  * | Bixby key (if delivered)  | Mode switch, next position, wrapping  |
  *
@@ -40,6 +41,9 @@ class PhoneControls(private val bar: Busybar, private val scope: CoroutineScope)
     fun tap() = toggle(InputKey.START)
 
     fun longPress() = toggle(InputKey.BACK)
+
+    /** One encoder click: [dir] > 0 is clockwise. */
+    fun dial(dir: Int) = toggle(if (dir > 0) InputKey.UP else InputKey.DOWN)
 
     /** [steps] > 0 moves towards SETTINGS. The physical switch has ends, so this clamps. */
     fun moveSwitch(steps: Int, wrap: Boolean = false) {
