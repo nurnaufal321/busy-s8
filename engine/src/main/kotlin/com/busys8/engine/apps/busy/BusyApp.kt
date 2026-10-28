@@ -8,6 +8,8 @@ import com.busys8.core.DeviceStorage
 import com.busys8.core.Gfx
 import com.busys8.core.ImageLoader
 import com.busys8.engine.apps.BusyAppHost
+import com.busys8.engine.apps.ListMenu
+import com.busys8.engine.apps.formatMinutes
 import com.busys8.engine.apps.LoaderPriority
 import com.busys8.engine.apps.NativeApp
 import com.busys8.engine.input.InputEvent
@@ -15,6 +17,9 @@ import com.busys8.engine.input.InputKey
 import com.busys8.engine.input.InputType
 import com.busys8.engine.timer.AppConfig
 import com.busys8.engine.timer.BusyTimer
+import com.busys8.engine.timer.IntervalConfig
+import com.busys8.engine.timer.TimerConfig
+import com.busys8.engine.timer.TimerLimits
 import com.busys8.engine.timer.ProfileSlot
 import com.busys8.engine.timer.TimerEvent
 import com.busys8.engine.timer.TimerMode
@@ -183,17 +188,142 @@ class BusyApp(
         }
     }
 
-    /** Placeholder for the setup scenes: profiles are edited via the API / web UI for now. */
-    private inner class SetupScene : Scene() {
+    /** busy_scene_setup: Timer, Theme and Smart home for the current profile. */
+    private inner class SetupScene(private val startFocus: Int = 0) : Scene() {
+        private val menu = ListMenu {
+            val p = timer.profile(slot)
+            listOf(
+                ListMenu.Action("Timer", { MODE_NAMES.getValue(p.timer.mode) }) { go(SetupTimerScene(), clock()) },
+                ListMenu.Action("Theme", { p.app.theme }) { go(SetupThemeScene(), clock()) },
+                ListMenu.Switch("Smart home", { timer.profile(slot).app.smartHome }, set = { on ->
+                    val cur = timer.profile(slot)
+                    timer.setPreset(slot, cur.timer, cur.app.copy(smartHome = on))
+                }),
+            )
+        }
+
+        override fun enter(nowMs: Long) = repeat(startFocus) { menu.input(InputKey.UP) }
+
+        override fun input(key: InputKey, nowMs: Long) = menu.input(key)
+
+        override fun back(nowMs: Long) {
+            if (!menu.input(InputKey.BACK)) go(StartScene(), nowMs)
+        }
+
+        override fun renderFront(g: Gfx, nowMs: Long) = menu.renderFront(g)
+
+        override fun renderBack(g: Gfx, nowMs: Long) = menu.renderBack(g)
+    }
+
+    /**
+     * busy_scene_setup_timer: mode and its durations; the values are saved when leaving with
+     * BACK. Changing the mode resets the durations to the defaults, as the firmware does.
+     */
+    private inner class SetupTimerScene : Scene() {
+        private val profile = timer.profile(slot)
+        private var mode = profile.timer.mode
+        private var timeMn = (profile.timer.simpleTotalMs / 60_000).toInt().takeIf { mode == TimerMode.SIMPLE } ?: TimerLimits.TIME_MIN_MN * 4
+        private var workMn = interval(profile.timer.interval.workMs, TimerLimits.WORK_DEFAULT_MN)
+        private var restMn = interval(profile.timer.interval.restMs, TimerLimits.REST_DEFAULT_MN)
+        private var cycles = profile.timer.interval.cycles.toInt().takeIf { mode == TimerMode.INTERVAL } ?: TimerLimits.CYCLES_DEFAULT
+        private var autostart = profile.timer.interval.autostart && mode == TimerMode.INTERVAL
+        private var showWorkOnly = profile.app.showWorkOnly
+
+        private fun interval(ms: Long, default: Int) = if (mode == TimerMode.INTERVAL) (ms / 60_000).toInt() else default
+
+        private val menu = ListMenu {
+            val simple = mode == TimerMode.SIMPLE
+            val interval = mode == TimerMode.INTERVAL
+            listOf(
+                ListMenu.Choice("Mode", TimerMode.entries.map { MODE_NAMES.getValue(it) }, { mode.ordinal }, set = { i ->
+                    if (i != mode.ordinal) {
+                        mode = TimerMode.entries[i]
+                        timeMn = TimerLimits.TIME_MIN_MN * 4
+                        workMn = TimerLimits.WORK_DEFAULT_MN
+                        restMn = TimerLimits.REST_DEFAULT_MN
+                        cycles = TimerLimits.CYCLES_DEFAULT
+                        autostart = false
+                    }
+                }),
+                ListMenu.Number("Time", TimerLimits.TIME_MIN_MN, TimerLimits.TIME_MAX_MN, TimerLimits.TIME_INCREMENT_MN, { timeMn }, { timeMn = it }, ::formatMinutes, visible = simple),
+                ListMenu.Number("Work", TimerLimits.WORK_MIN_MN, TimerLimits.WORK_MAX_MN, TimerLimits.TIME_INCREMENT_MN, { workMn }, { workMn = it }, ::formatMinutes, visible = interval),
+                ListMenu.Number("Rest", TimerLimits.REST_MIN_MN, TimerLimits.REST_MAX_MN, TimerLimits.TIME_INCREMENT_MN, { restMn }, { restMn = it }, ::formatMinutes, visible = interval),
+                ListMenu.Number("Cycles", TimerLimits.CYCLES_MIN, TimerLimits.CYCLES_MAX, 1, { cycles }, { cycles = it }, visible = interval),
+                ListMenu.Switch("Autostart", { autostart }, { autostart = it }, visible = interval),
+                ListMenu.Switch("Show work phase only", { showWorkOnly }, { showWorkOnly = it }),
+            )
+        }
+
+        override fun input(key: InputKey, nowMs: Long) = menu.input(key)
+
+        override fun back(nowMs: Long) {
+            if (menu.input(InputKey.BACK)) return
+            save()
+            go(SetupScene(startFocus = 0), nowMs)
+        }
+
+        private fun save() {
+            val config = when (mode) {
+                TimerMode.INFINITE -> TimerConfig(TimerMode.INFINITE)
+                TimerMode.SIMPLE -> TimerConfig(TimerMode.SIMPLE, simpleTotalMs = timeMn * 60_000L)
+                TimerMode.INTERVAL -> TimerConfig(
+                    TimerMode.INTERVAL,
+                    interval = IntervalConfig(workMn * 60_000L, restMn * 60_000L, cycles.toLong(), autostart),
+                )
+            }
+            val cur = timer.profile(slot)
+            timer.setPreset(slot, config, cur.app.copy(showWorkOnly = showWorkOnly))
+        }
+
+        override fun renderFront(g: Gfx, nowMs: Long) = menu.renderFront(g)
+
+        override fun renderBack(g: Gfx, nowMs: Long) = menu.renderBack(g)
+    }
+
+    /**
+     * busy_scene_setup_theme: the dial cycles through themes, previewing each one's animation;
+     * OK/START keeps it, BACK leaves the theme unchanged.
+     */
+    private inner class SetupThemeScene : Scene() {
+        private val themes = listOf(AppConfig.THEME_DEFAULT) + themeNames()
+        private var index = themes.indexOf(timer.profile(slot).app.theme).coerceAtLeast(0)
+
         override fun input(key: InputKey, nowMs: Long): Boolean {
-            if (key == InputKey.OK || key == InputKey.START) go(StartScene(), nowMs)
+            when (key) {
+                InputKey.UP -> index = (index + 1) % themes.size
+                InputKey.DOWN -> index = (index - 1).mod(themes.size)
+                InputKey.OK, InputKey.START -> {
+                    val cur = timer.profile(slot)
+                    timer.setPreset(slot, cur.timer, cur.app.copy(theme = themes[index]))
+                    go(SetupScene(startFocus = 1), nowMs)
+                }
+                else -> return false
+            }
             return true
         }
 
+        override fun back(nowMs: Long) = go(SetupScene(startFocus = 1), nowMs)
+
         override fun renderFront(g: Gfx, nowMs: Long) {
-            g.text("SETUP", FONT_LARGE, 36, 4, WHITE, Align.CENTER)
-            g.text("use the web UI", FONT_NORMAL, 36, 12, 0xFF909090.toInt(), Align.CENTER)
+            val bg = themeBackground(themes[index])
+            if (bg != null) anims.draw(g, anims.loop(bg, nowMs), 0, 0, nowMs)
+            else indicator.render(g, TimerState.WORK, infinite = true, progress = 0f, nowMs = nowMs)
         }
+
+        override fun renderBack(g: Gfx, nowMs: Long) {
+            g.text("Theme", ApiFont.NORMAL, 74, 14, 0xFF909090.toInt(), Align.CENTER)
+            g.text(themes[index].replace('_', ' ').uppercase(), ApiFont.LARGE, 74, 40, WHITE, Align.CENTER)
+            g.text("${index + 1}/${themes.size}", ApiFont.SMALL, 74, 62, 0xFF909090.toInt(), Align.CENTER)
+        }
+
+        /** Theme folders sorted by their theme.json "order" (busy_theme.c). */
+        private fun themeNames(): List<String> =
+            storage.list("/ext/apps_assets/busy/themes")?.filter { it.second }?.map { it.first }
+                ?.sortedBy { name ->
+                    storage.read(BusyAssets.theme(name))?.decodeToString()?.let {
+                        runCatching { Json.parseToJsonElement(it).jsonObject["order"]?.jsonPrimitive?.content?.toInt() }.getOrNull()
+                    } ?: Int.MAX_VALUE
+                }.orEmpty()
     }
 
     /** busy_scene_overview: work/rest lengths over an animation, then the timer after 2.25 s. */
@@ -492,6 +622,8 @@ class BusyApp(
     }
 
     private companion object {
+        /** busy_timer_mode_names. */
+        val MODE_NAMES = mapOf(TimerMode.INFINITE to "Off", TimerMode.SIMPLE to "Simple", TimerMode.INTERVAL to "Interval")
         const val LABEL_HIDDEN_MS = 15_000L
         const val LABEL_SHOWN_MS = 5_000L
         const val SUMMARY_MS = 3_000L

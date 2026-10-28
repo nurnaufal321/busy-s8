@@ -131,6 +131,52 @@ class BusybarTest {
     }
 
     @Test
+    fun `timer setup with the dial and buttons changes the profile`() {
+        run(500)
+        press(InputKey.DOWN) // start menu → Setup
+        run(400)
+        press(InputKey.OK)
+        run(200)
+        snap("setup-menu")
+        press(InputKey.OK) // Timer
+        run(200)
+        // Items in interval mode: Mode, Work, Rest, Cycles, Autostart, Show work only.
+        press(InputKey.UP) // → Work
+        press(InputKey.OK) // edit
+        repeat(6) { press(InputKey.UP) } // 20 → 50 m
+        run(100)
+        snap("setup-timer-editing")
+        press(InputKey.OK)
+        press(InputKey.UP) // → Rest
+        press(InputKey.OK)
+        press(InputKey.UP) // 5 → 10 m
+        press(InputKey.OK)
+        press(InputKey.UP) // → Cycles
+        press(InputKey.OK)
+        press(InputKey.UP) // 3 → 4
+        press(InputKey.OK)
+        press(InputKey.BACK) // leave Timer: saves
+        run(100)
+        val interval = bar.timer.profile(com.busys8.engine.timer.ProfileSlot.BUSY).timer.interval
+        assertEquals(50 * 60_000L, interval.workMs)
+        assertEquals(10 * 60_000L, interval.restMs)
+        assertEquals(4L, interval.cycles)
+
+        press(InputKey.UP) // setup menu → Theme
+        press(InputKey.OK)
+        press(InputKey.UP) // next theme
+        run(300)
+        snap("setup-theme")
+        press(InputKey.OK) // keep it
+        assertTrue(bar.timer.profile(com.busys8.engine.timer.ProfileSlot.BUSY).app.theme != "busy")
+
+        press(InputKey.BACK) // setup menu → start
+        press(InputKey.START)
+        run(3000)
+        assertEquals(50 * 60L, (bar.timer.lastKnownSnapshot.state as com.busys8.engine.timer.SnapshotState.Interval).leftMs / 1000)
+    }
+
+    @Test
     fun `a paused session stays paused across a restart`() {
         run(500)
         press(InputKey.START)
