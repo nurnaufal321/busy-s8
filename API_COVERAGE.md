@@ -49,11 +49,11 @@ Also served: `GET /openapi.yaml`, the web UI at `/`, and 405 + `Allow` for unsup
 | Settings | POST | `/api/display/brightness` | setDisplayBrightness | implemented |  |
 | Settings | GET | `/api/name` |  | implemented |  |
 | Settings | POST | `/api/name` |  | implemented |  |
-| Smart Home | DELETE | `/api/smart_home/pairing` |  | stubbed | 503: no Matter |
-| Smart Home | GET | `/api/smart_home/pairing` | getSmartHomeCommissioningStatus | stubbed | never paired |
-| Smart Home | POST | `/api/smart_home/pairing` | startSmartHomePairing | stubbed | 503: no Matter |
-| Smart Home | GET | `/api/smart_home/switch` |  | stubbed | stored only |
-| Smart Home | POST | `/api/smart_home/switch` |  | stubbed | stored only |
+| Smart Home | DELETE | `/api/smart_home/pairing` |  | implemented | forgets all Matter pairings |
+| Smart Home | GET | `/api/smart_home/pairing` | getSmartHomeCommissioningStatus | implemented |  |
+| Smart Home | POST | `/api/smart_home/pairing` | startSmartHomePairing | implemented | opens a 15-minute window |
+| Smart Home | GET | `/api/smart_home/switch` |  | implemented |  |
+| Smart Home | POST | `/api/smart_home/switch` |  | implemented | `startup` is stored only |
 | Storage | GET | `/api/storage/list` | listStorageFiles | implemented |  |
 | Storage | POST | `/api/storage/mkdir` | createStorageDir | implemented |  |
 | Storage | GET | `/api/storage/read` | readStorageFile | implemented |  |
@@ -89,7 +89,7 @@ Also served: `GET /openapi.yaml`, the web UI at `/`, and 405 + `Allow` for unsup
 | Wi-Fi | GET | `/api/wifi/networks` | getWifiNetworks | stubbed | current network only |
 | Wi-Fi | GET | `/api/wifi/status` |  | implemented |  |
 
-58 implemented, 23 stubbed, 0 missing, of 81 operations.
+63 implemented, 18 stubbed, 0 missing, of 81 operations.
 
 ## Conformance
 
@@ -103,7 +103,8 @@ The suite's wrong-method check (405 + `Allow`) passes for all 40 candidate paths
 - **Port 8080**, not 80 (Android); mDNS announces `busybar.local` and `busybar-<mac>._http._tcp`.
 - **Access** defaults to `enabled` (open on the LAN): a real bar is unlocked over USB first. Requests from `127.0.0.1` (adb forwards, JS apps) are treated like USB and always allowed.
 - **Status stream** sends the front display only, uncompressed (`PLAIN`), like the firmware's streamer; power and Wi-Fi are polled every 5 s.
-- **No MQTT/cloud sync** of timer snapshots and profiles; Matter (`trigger_smart_home`) is stored but has no effect.
+- **No MQTT/cloud sync** of timer snapshots and profiles.
+- **Matter** is a real device on the phone (`matter/`, rs-matter, run by the app): one On/Off Plug-in Unit named "BUSY Bar", driven like the bar's smart-home switch (`busy_timer_smart_home.c`). Tested 2026-10-28 with Home Assistant's Matter Server and a phone Home app, both pairing and switching. It uses the Matter SDK's development attestation certificate (VID 0xFFF1/PID 0x8001), so ecosystems treat it as an uncertified test device: Apple/Google Home warn, and HA's Matter Server needs its "Test DCL" setting. Each phone makes its own random passcode. Not ported: the Identify cluster (blinking) and the StartUpOnOff behaviour. Pairing is over Wi-Fi only (on-network), not Bluetooth.
 - **Binary `.anim` files** (what JS apps ship) are decoded; uploaded `.image` files (LVGL binary) are not yet. PNG uploads and the bundled animations work. `.snd` and WAV sounds play.
 - **JS apps run on QuickJS**, not JerryScript, with the firmware's globals reimplemented (`engine/src/main/resources/jsrunner/prelude.js`): `fetch` (with `Headers`, `Request`, `Response`, a minimal `ReadableStream`, `AbortController`), `URL`/`URLSearchParams`, `listen("input")`, `localStorage`, timers, `console`, plus `TextEncoder`/`TextDecoder`. Apps get ES2023 rather than JerryScript's subset, so code that runs here may not run on a bar. `fetch`'s `dispatcher: {connect: {useDeviceKey: true}}` is ignored: there is no device key for Flipper's apps backend. A relative URL resolves against the bar itself, and the phone serves the backend's weather API (`/weather/v1/forecast`, `/weather/v1/locations`) from Open-Meteo, so public builds of weather-app work. Auto location uses the bar's time zone instead of geo-IP.
 - **Bluetooth (official BUSY app)**: the phone advertises and serves GATT like the bar (`app/.../BleBridge.kt`). Tested 2026-10-28 with the official app on Android: it found "BUSY Bar", paired (Android shows its pairing prompt on the phone; accept it there), and then ran its whole session over the UART bridge: status, profiles (edits applied), screen, storage, name, brightness, volume, time zone, updates. It keeps retrying `POST /api/account/link`, which answers 503 because account linking needs Flipper's cloud. SETTINGS → Bluetooth is the bar's pairing screen (ble_settings): unpaired it shows "Pairing mode..." with Bluetooth on, and turns Bluetooth off again when left unpaired or after 5 minutes; paired, it offers "Forget device". Unlike the bar, the phone cannot limit advertising to the paired phone.

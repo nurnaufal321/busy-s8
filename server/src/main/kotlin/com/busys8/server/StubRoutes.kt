@@ -22,9 +22,10 @@ import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonObject
 
 /**
- * Endpoints for hardware and services the phone does not have: Wi-Fi configuration (Android
- * owns the network), BLE (phase 3b), Matter, the BUSY cloud account and firmware updates.
- * Each answers with a schema-valid "not available" so clients degrade instead of breaking.
+ * Endpoints for services the phone handles differently: Wi-Fi (Android owns the network; status
+ * is real, configuration refused), BLE and smart home (backed by the app's Bluetooth bridge and
+ * Matter device), and the BUSY cloud account and firmware updates, which answer with a
+ * schema-valid "not available" so clients degrade instead of breaking.
  */
 fun Route.stubRoutes(bar: Busybar) {
     // ---- Wi-Fi: real status from the phone, configuration refused ----

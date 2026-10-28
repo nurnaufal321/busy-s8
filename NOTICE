@@ -17,5 +17,6 @@ Bundled libraries (in the APK):
   - quickjs-kt, Copyright dokar3: Apache-2.0 (https://github.com/dokar3/quickjs-kt)
   - QuickJS, Copyright Fabrice Bellard and Charlie Gordon: MIT
   - Ktor, kotlinx (JetBrains): Apache-2.0; JmDNS: Apache-2.0; AndroidX CameraX: Apache-2.0
+  - rs-matter, Copyright Project CHIP Authors: Apache-2.0 (libbusymatter.so, built from matter/)
 
 REUSE.toml records the licence of each path.

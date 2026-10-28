@@ -42,7 +42,8 @@ names back to the bundled sources.
 | `core/.../CanvasRenderer.kt` | `services/canvas/canvas_widgets.c`, `gui/modules/{label,countdown}.c` | Anchor placement, label metrics, circular scroll, countdown format |
 | `core/.../Xpm.kt` | `lib/xpm` behaviour as documented in `assets.yaml` | XPM2 subset |
 | `core/.../Anim.kt` | `gui/modules/anim_player.c`, `lib/anim_file` | Plays frame zips and binary `.anim`; section and loop semantics |
-| `engine/.../timer/*` | `services/busy_timer/*` | State machine, snapshot/profile JSON, defaults, persistence; no MQTT/Matter |
+| `engine/.../timer/*` | `services/busy_timer/*` | State machine, snapshot/profile JSON, defaults, persistence; no MQTT |
+| `engine/.../system/SmartHome.kt`, `matter/` | `services/busy_timer/busy_timer_smart_home.c`, `services/matter`, `http_api/api_smart_home.c` | Switch ↔ timer rules, initial-state handling; the Matter node is rs-matter, not the CHIP SDK |
 | `engine/.../input/Input.kt` | `services/input/input.c` | Short/long/repeat timing |
 | `engine/.../apps/Desktop.kt` | `services/desktop`, `services/canvas` input handling, `busy_timer_util.c` | Mode switch → app, canvas input precedence |
 | `engine/.../apps/busy/*` | `applications/main/busy` (scenes, widgets, presets) | All session scenes; no transitions or setup screens yet |
@@ -56,3 +57,9 @@ names back to the bundled sources.
 | `engine/.../system/Sensors.kt` (`AutoBrightness`) | `services/light_sensor/light_sensor_data.c`, `services/brightness_control/brightness_conv.c` | Moving average, log lux → level 0–15, front display curve |
 | `core/.../AnimBin.kt` | `documentation/File Formats.dox.md`, `scripts/seq2anim.py`, `scripts/flipper/rle.py` | Binary `.anim` decoder: mask RLE/bitmap, pixel RAW/RLE/QOI-like |
 | `engine/.../apps/ListMenu.kt`, `SettingsApp.kt`, BUSY setup scenes | `gui/modules/var_item_list.c`, `main/settings_menu`, `busy_scene_setup*.c` | Dial/OK/BACK editing; settings pages the phone can serve |
+
+## Other upstream code
+
+| Component | Source | Pinned | Licence |
+|---|---|---|---|
+| `matter/` (busy-matter) | [project-chip/rs-matter](https://github.com/project-chip/rs-matter) | `1c01ee7f6f1dab2ef6fe4396afedd26e38ad79f2` | Apache-2.0; `matter/src/mdns.rs` is from its examples |

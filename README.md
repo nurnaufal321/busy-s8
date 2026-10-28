@@ -71,6 +71,41 @@ app then controls the phone over Bluetooth like a real bar. Leaving the screen w
 (or 5 minutes) turns Bluetooth off again. With a phone paired, SETTINGS → Bluetooth offers
 "Forget device". Linking a BUSY account does not work (it needs Flipper's cloud).
 
+## Smart home (Matter)
+
+The phone is a Matter device: an on/off switch named "BUSY Bar" that Apple Home, Google Home and
+Home Assistant pair with over Wi-Fi. It works like the bar's smart-home switch: on during work
+intervals (for profiles with "Smart home" on in BUSY → Setup), off on rest, pause or stop; switching
+it on from your home app starts the BUSY session, off stops it.
+
+Pair from SETTINGS → Smart home on the phone (the code and a 15-minute window) or the web UI's
+Smart home → Pair device (a QR code). It identifies with the Matter SDK's development
+certificate, so it pairs as an uncertified device: Apple/Google Home ask you to confirm, and Home
+Assistant's Matter Server needs its "Test DCL" setting turned on. One ecosystem is enough; a second
+can be added with your home app's "share" or a new window. SETTINGS → Smart home → Forget all
+removes every pairing.
+
+The Matter side is `matter/` (Rust, [rs-matter](https://github.com/project-chip/rs-matter)), shipped
+in the APK as `libbusymatter.so`; `matter/build-android.sh` rebuilds it (Rust with the
+`aarch64-linux-android` target and the NDK).
+
+## Desktop BUSY app
+
+The macOS BUSY app only connects "via USB cable": a real bar shows up as a USB-Ethernet adapter
+at 10.0.4.20, which an Android 9 phone cannot be for a Mac. `tools/usb-bridge.py` stands in for
+it: give the computer that address and relay it to the phone over the network.
+
+```bash
+sudo ifconfig lo0 alias 10.0.4.20/32
+```
+
+```bash
+python3 tools/usb-bridge.py busybar.local:8080
+```
+
+Then choose Connect BUSY Bar → Via USB cable in the app. The address lasts until reboot
+(`sudo ifconfig lo0 -alias 10.0.4.20` removes it).
+
 ## JS apps
 
 Apps built with [busy-cli](https://www.npmjs.com/package/@busy-app/cli) install and run as on a
