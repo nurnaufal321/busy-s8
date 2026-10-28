@@ -75,8 +75,12 @@ npx busy-cli app install --addr busybar.local:8080
 npx busy-cli app run --addr busybar.local:8080
 ```
 
-The upstream clock app runs unmodified. The weather app runs too, but shows its offline
-screen: its forecast comes from Flipper's cloud API, which needs a real bar's device key.
+The upstream clock and weather apps run unmodified. Weather's forecast normally comes from
+Flipper's apps backend, which only answers real bars (it checks the bar's device certificate),
+so the phone serves that API itself (`/weather/v1/forecast` and `/locations`) from
+[Open-Meteo](https://open-meteo.com). With the location on Auto, the bar's time zone picks the
+city, e.g. Asia/Singapore → Singapore; set a city in the app's settings in the web UI for
+anywhere else.
 
 The panel guards against AMOLED burn-in: the LED grid orbits by half an LED every 2 minutes,
 and static content dims to 40% after 5 minutes.

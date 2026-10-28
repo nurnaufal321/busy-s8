@@ -76,6 +76,7 @@ fun Application.module(bar: Busybar, assets: AssetSource) {
         accessRoutes(bar)
         storageRoutes(bar)
         appsRoutes(bar)
+        weatherRoutes(bar)
         stubRoutes(bar)
         statusStream(bar, hub)
         // Anything under /api that no route took: 405 with Allow for known paths, else 404.

@@ -448,7 +448,8 @@
       const from = input instanceof Request ? input : null;
       super(bodyBytes(init.body) ?? (from ? from._bytes : null));
       this._bytes = bodyBytes(init.body) ?? (from ? from._bytes : null);
-      this.url = from ? from.url : new URL(String(input)).href;
+      // A relative URL means the bar itself (busy-s8: it serves the apps backend's weather API).
+      this.url = from ? from.url : new URL(String(input), "http://localhost/").href;
       this.method = String(init.method ?? from?.method ?? "GET").toUpperCase();
       this.headers = new Headers(init.headers ?? from?.headers);
       this.signal = init.signal ?? from?.signal ?? null;
