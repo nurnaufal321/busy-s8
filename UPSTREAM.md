@@ -47,3 +47,8 @@ names back to the bundled sources.
 | `engine/.../apps/Desktop.kt` | `services/desktop`, `services/canvas` input handling, `busy_timer_util.c` | Mode switch → app, canvas input precedence |
 | `engine/.../apps/busy/*` | `applications/main/busy` (scenes, widgets, presets) | All session scenes; no transitions or setup screens yet |
 | `server/.../BusyServer.kt`, `BusyRoutes.kt` | `web_server/web_server_i.h`, `http_api/api_busy.c`, `api_input.c` | Reply bodies, CORS headers |
+| `server/.../Auth.kt`, `AccessRoutes.kt` | `http_api/api_root.c`, `services/api_tokens` | Access modes, password, hashed tokens, JS allowlist, X-API-Sem-Ver |
+| `server/.../SystemRoutes.kt`, `StorageRoutes.kt`, `AppsRoutes.kt`, `StubRoutes.kt` | `http_api/api_*.c` | Status formats (incl. the uptime quirk), storage, audio (.snd = raw PCM), apps |
+| `server/.../StateProto.kt`, `StatusStream.kt` | `services/state_publisher`, `api_status_streaming.c`, busybar-protobuf | Hand-written proto3 encoder; enable / send-all protocol, 4 clients, 100 ms frames |
+| `engine/.../jsapps/JsApps.kt` | `services/js_app_installer`, `lib/js_app` | tar/tgz staging, install keys, manifest and settings schema |
+| `engine/.../apps/ListMenu.kt`, `SettingsApp.kt`, BUSY setup scenes | `gui/modules/var_item_list.c`, `main/settings_menu`, `busy_scene_setup*.c` | Dial/OK/BACK editing; settings pages the phone can serve |

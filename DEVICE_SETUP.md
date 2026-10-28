@@ -149,14 +149,21 @@ only works for test-only builds, so the reliable way out is a factory reset.
 ## 4. Network
 
 BUSY S8 serves the BUSY Bar API on **port 8080**, because Android does not let unprivileged
-apps listen on port 80. The idle screen shows the address. Give the phone a DHCP reservation in
-your router so the address stays fixed.
+apps listen on port 80. It announces itself over mDNS as `busybar.local` (from the device name;
+rename the bar and the hostname follows) and as a `busybar-<mac>` `_http._tcp` service.
+SETTINGS → Network shows the name and IP. A DHCP reservation in your router still helps for
+clients that do not speak mDNS.
 
-- Web UI: `http://<phone-ip>:8080/`
-- busy-cli: `busy-cli app install --addr <phone-ip>:8080`
-- busylib-py: `BusyBar(addr="<phone-ip>:8080")`
+- Web UI: `http://busybar.local:8080/`
+- busy-cli: `busy-cli app install --addr busybar.local:8080`
+- busylib-py: `BusyBar(addr="busybar.local:8080")`
 - Home Assistant (busy-hacs): add the integration manually with host `<phone-ip>:8080`.
   Zeroconf auto-discovery finds the phone but drops the port, so discovered entries won't connect.
+
+API access is open on your LAN by default. To require a password, set one in the web UI
+(Network → HTTP API access) or with `curl -X POST "http://busybar.local:8080/api/access?mode=key&key=1234"`;
+clients then send it as the `X-API-Token` header. Requests from the phone itself (adb forwards)
+are always allowed, the way USB is on a real bar.
 
 ### Optional, rooted phones only: serve on port 80
 

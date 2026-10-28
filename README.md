@@ -17,7 +17,7 @@ Unofficial; not affiliated with Flipper Devices. See [NOTICE](NOTICE).
 |---|---|---|
 | 1 | Kiosk shell, LED renderer, `POST/DELETE /api/display/draw` | done |
 | 2 | `busy_timer` port, BUSY app, `/api/busy/*`, `/api/input`, phone controls, burn-in protection | done |
-| 3 | Rest of the API, status WebSocket, bundled web UI | |
+| 3 | Rest of the API, status stream, bundled web UI, mDNS, setup and settings screens | done |
 | 3b | Bluetooth bridge for the official BUSY app (best effort) | |
 | 4 | QuickJS runtime for JS apps | |
 | 5 | Auto brightness, presence, auto ON CALL | |
@@ -31,8 +31,8 @@ Endpoint-level status: [API_COVERAGE.md](API_COVERAGE.md). Upstream versions:
 |---|---|---|
 | `core` | JVM | Framebuffers, LVGL font reader, animation player, draw-element parser, canvas service, renderer |
 | `engine` | JVM | `busy_timer` port, input service, desktop/mode switch, BUSY app and other built-in apps |
-| `server` | JVM | Ktor (CIO) HTTP API |
-| `app` | Android | Kiosk activity, Compose LED panel, foreground service, device-owner policies |
+| `server` | JVM | Ktor (CIO) HTTP API, protobuf status stream, web UI, firmware-style auth |
+| `app` | Android | Kiosk activity, Compose LED panel, phone controls, Android platform (battery, Wi-Fi, clock, brightness, volume), mDNS |
 | `vendor/` | data | Pinned upstream assets, web UI, OpenAPI spec, protobufs |
 | `upstream/` | scripts | `fetch.sh` (clone pinned repos), `sync.sh` (refresh `vendor/`) |
 
@@ -44,15 +44,17 @@ emulator. `./gradlew :engine:test` also writes previews of the BUSY app's screen
 
 | Phone | Bar |
 |---|---|
-| Volume up / down | Dial clockwise / counter-clockwise (BUSY app: ±5 minutes) |
+| Volume up / down, or drag left / right | Dial counter-clockwise / clockwise: move through menus, change values, ±5 min in a session |
 | Tap | START (start, pause, resume) |
 | Long-press | BACK (stop a session; resume when paused) |
 | Swipe down / up | Mode switch to the next / previous position: BUSY, CUSTOM, OFF, APPS, SETTINGS |
 | Wave over the proximity sensor | OK (dial button: skip the current interval) |
 | Bixby key, if One UI delivers it | Mode switch, next position |
 
-OFF is the bar's sleep: the screen goes fully black. SETTINGS shows the phone's address until
-the settings menu is ported. On the emulator, a keyboard works too: arrows, Enter = OK,
+OFF is the bar's sleep: the screen goes fully black. In menus (BUSY → Setup, and SETTINGS) the
+dial moves between items, a tap starts or stops editing the item (it turns yellow), and a
+long-press stops editing or goes back; leaving the timer setup saves it. CUSTOM is a second
+profile, by default an endless KEEP OUT timer; change it under its own Setup. On the emulator, a keyboard works too: arrows, Enter = OK,
 Space = START, Esc/Backspace = BACK, 1–5 = switch positions.
 
 The panel guards against AMOLED burn-in: the LED grid orbits by half an LED every 2 minutes,
@@ -100,7 +102,11 @@ curl -X POST localhost:8080/api/display/draw -d '{"application_name":"curl","ele
 ## Run on the phone
 
 See [DEVICE_SETUP.md](DEVICE_SETUP.md): factory reset without accounts, debloat, install, set
-device owner. Swipe to SETTINGS to see the address to use (`<ip>:8080`).
+device owner.
+
+On the LAN the phone answers as **`http://busybar.local:8080`** (the name follows the device
+name, as on the real bar); SETTINGS → Network shows the address too. Open that URL in a browser
+for BUSY's own web UI: live screen, timer profiles, settings, draw tool and apps.
 
 ## Refreshing upstream
 
