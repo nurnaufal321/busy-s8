@@ -38,6 +38,8 @@ data class SettingsData(
     val awayAfterMin: Int = 5,
     /** Start an ON CALL session while someone keeps talking (microphone, on the phone only). */
     val autoOnCall: Boolean = false,
+    /** ble settings: off by default, as on the bar. */
+    val bleEnabled: Boolean = false,
 ) {
     companion object {
         const val DEFAULT_NAME = "BUSY Bar"
@@ -45,7 +47,7 @@ data class SettingsData(
 }
 
 /** What changed, for the status stream. */
-enum class SettingsChange { NAME, BRIGHTNESS, VOLUME, TIMEZONE, ACCESS, OTHER }
+enum class SettingsChange { NAME, BRIGHTNESS, VOLUME, TIMEZONE, ACCESS, BLE, OTHER }
 
 class DeviceSettings(private val file: File) {
     private val json = Json { ignoreUnknownKeys = true; encodeDefaults = true }

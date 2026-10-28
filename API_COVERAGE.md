@@ -28,10 +28,10 @@ Also served: `GET /openapi.yaml`, the web UI at `/`, and 405 + `Allow` for unsup
 | Assets | POST | `/api/audio/play` | playAudio | implemented |  |
 | Assets | DELETE | `/api/display/draw` | clearDisplay | implemented |  |
 | Assets | POST | `/api/display/draw` | drawOnDisplay | implemented |  |
-| BLE | POST | `/api/ble/disable` |  | stubbed | 503 until phase 3b |
-| BLE | POST | `/api/ble/enable` |  | stubbed | 503 until phase 3b |
-| BLE | DELETE | `/api/ble/pairing` |  | stubbed | 503 until phase 3b |
-| BLE | GET | `/api/ble/status` |  | stubbed | always disabled |
+| BLE | POST | `/api/ble/disable` |  | implemented |  |
+| BLE | POST | `/api/ble/enable` |  | implemented |  |
+| BLE | DELETE | `/api/ble/pairing` |  | implemented |  |
+| BLE | GET | `/api/ble/status` |  | implemented |  |
 | Busy | GET | `/api/busy/profiles/{slot}` | getBusyProfile | implemented |  |
 | Busy | PUT | `/api/busy/profiles/{slot}` | setBusyProfile | implemented |  |
 | Busy | GET | `/api/busy/snapshot` | getBusySnapshot | implemented |  |
@@ -89,13 +89,13 @@ Also served: `GET /openapi.yaml`, the web UI at `/`, and 405 + `Allow` for unsup
 | Wi-Fi | GET | `/api/wifi/networks` | getWifiNetworks | stubbed | current network only |
 | Wi-Fi | GET | `/api/wifi/status` |  | implemented |  |
 
-54 implemented, 27 stubbed, 0 missing, of 81 operations.
+58 implemented, 23 stubbed, 0 missing, of 81 operations.
 
 ## Conformance
 
 Checked with schemathesis against the emulator using the firmware suite's own scope
 (`tests/integration/frontend/schema_conformance`: GET and POST, its skip list, 10 examples each):
-everything passes except `POST /api/ble/enable` and `/api/ble/disable` (503 until phase 3b).
+everything passed (before phase 3b, BLE enable/disable answered 503; they are implemented now).
 The suite's wrong-method check (405 + `Allow`) passes for all 40 candidate paths.
 
 ## Differences from a real bar

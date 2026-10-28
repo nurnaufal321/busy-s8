@@ -56,6 +56,7 @@ class StateHub(private val bar: Busybar) {
                 SettingsChange.VOLUME -> markAll(StateKind.AUDIO_VOLUME)
                 SettingsChange.TIMEZONE -> markAll(StateKind.TIMEZONE)
                 SettingsChange.OTHER -> markAll(StateKind.AUTO_UPDATE)
+                SettingsChange.BLE -> markAll(StateKind.BLE)
                 SettingsChange.ACCESS -> Unit
             }
         }

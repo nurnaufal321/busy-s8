@@ -1,6 +1,7 @@
 package com.busys8.server
 
 import com.busys8.engine.Busybar
+import com.busys8.engine.system.BleStatus
 import com.busys8.engine.input.InputEvent
 import com.busys8.engine.input.InputKey
 import com.busys8.engine.input.InputType
@@ -108,8 +109,15 @@ class StateEncoder(private val bar: Busybar) {
         StateKind.FRAME -> frame()
         StateKind.INPUT -> null
         StateKind.TIMER -> { { msg(12) { jsonMsg(1, TimerJson.snapshot(bar.timer.lastKnownSnapshot).toString()) } } }
-        // ble.proto READY: initialised but disabled.
-        StateKind.BLE -> { { msg(13) { uint(1, 2) } } }
+        StateKind.BLE -> {
+            {
+                msg(13) {
+                    val ble = bar.ble
+                    uint(1, ble.status.proto)
+                    if (ble.status == BleStatus.CONNECTED) ble.peerAddress?.let { string(2, it) }
+                }
+            }
+        }
         StateKind.AUTO_UPDATE -> { { msg(14) { autoUpdate() } } }
         StateKind.TIMER_PROFILES -> { { msg(15) { profiles() } } }
     }

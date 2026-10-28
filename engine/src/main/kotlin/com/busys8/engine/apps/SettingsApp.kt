@@ -4,7 +4,10 @@ import com.busys8.core.Gfx
 import com.busys8.engine.input.InputEvent
 import com.busys8.engine.input.InputKey
 import com.busys8.engine.input.InputType
+import com.busys8.engine.system.BleControl
+import com.busys8.engine.system.BleStatus
 import com.busys8.engine.system.DeviceSettings
+import com.busys8.engine.system.NoBle
 import com.busys8.engine.system.Platform
 import com.busys8.engine.system.SettingsChange
 import java.time.ZoneId
@@ -19,6 +22,7 @@ class SettingsApp(
     private val platform: Platform,
     private val firmwareVersion: String,
     private val networkLines: () -> List<String>,
+    private val ble: () -> BleControl = { NoBle },
 ) : NativeApp {
     override val priority = LoaderPriority.DEFAULT
 
@@ -29,6 +33,7 @@ class SettingsApp(
             ListMenu.Action("Sensors") { page = sensors() },
             ListMenu.Action("Time") { page = time() },
             ListMenu.Action("Network") { page = network() },
+            ListMenu.Action("Bluetooth") { page = bluetooth() },
             ListMenu.Action("About") { page = about() },
         )
     }
@@ -103,6 +108,18 @@ class SettingsApp(
             ListMenu.Choice("Time format", listOf("24 h", "12 h"), { if (settings.data.clock12h) 1 else 0 }, set = { i ->
                 settings.update(SettingsChange.OTHER) { it.copy(clock12h = i == 1) }
             }),
+        )
+    }
+
+    /** ble_settings: on/off, the link's state, and forgetting the paired phone. */
+    private fun bluetooth(): ListMenu = ListMenu("Bluetooth") {
+        val b = ble()
+        listOf(
+            ListMenu.Switch("Bluetooth", { b.status != BleStatus.READY }, { on ->
+                if (if (on) b.enable() else b.disable()) settings.update(SettingsChange.BLE) { it.copy(bleEnabled = on) }
+            }),
+            ListMenu.Action("Status", { b.status.api }) {},
+            ListMenu.Action("Forget pairing") { b.forget() },
         )
     }
 

@@ -48,6 +48,9 @@ class Busybar(
     private val hooks = LateHooks()
     val input = InputService(clock)
     val timer = BusyTimer(clock, FileTimerStore(File(dataDir, "busy_timer")), hooks)
+    /** The Bluetooth bridge; the host replaces this with its GATT server. */
+    @Volatile var ble: com.busys8.engine.system.BleControl = com.busys8.engine.system.NoBle
+
     /** Phone extras, driven by the host's camera and microphone (see [applySensorSettings]). */
     val presence = Presence(clock)
     val autoOnCall = AutoOnCall(timer, clock)
@@ -68,7 +71,7 @@ class Busybar(
     private val appsMenu = AppsMenuApp(jsApps) { launchApp(it.manifest.id) }
     /** What the SETTINGS position shows (device name and addresses), set by the host. */
     @Volatile var infoLines: List<String> = emptyList()
-    private val settingsApp = SettingsApp(settings, platform, FIRMWARE_VERSION) { infoLines }
+    private val settingsApp = SettingsApp(settings, platform, FIRMWARE_VERSION, { infoLines }, { ble })
 
     val desktop = Desktop(
         input, timer, device.canvas,

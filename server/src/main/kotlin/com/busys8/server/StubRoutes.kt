@@ -1,6 +1,7 @@
 package com.busys8.server
 
 import com.busys8.engine.Busybar
+import com.busys8.engine.system.BleStatus
 import com.busys8.engine.system.SettingsChange
 import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
@@ -56,11 +57,28 @@ fun Route.stubRoutes(bar: Busybar) {
     post("/api/wifi/connect") { call.unavailable("Wi-Fi is managed by the phone's settings") }
     post("/api/wifi/disconnect") { call.unavailable("Wi-Fi is managed by the phone's settings") }
 
-    // ---- BLE ----
-    get("/api/ble/status") { call.respondJson(buildJsonObject { put("status", "disabled") }) }
-    post("/api/ble/enable") { call.unavailable("BLE is not available") }
-    post("/api/ble/disable") { call.unavailable("BLE is not available") }
-    delete("/api/ble/pairing") { call.unavailable("BLE is not available") }
+    // ---- BLE (api_ble.c), backed by the host's Bluetooth bridge ----
+    get("/api/ble/status") {
+        val ble = bar.ble
+        if (ble.status == BleStatus.ERROR) return@get call.unavailable(ble.status.api)
+        call.respondJson(buildJsonObject {
+            put("status", ble.status.api)
+            if (ble.status == BleStatus.CONNECTED) ble.peerAddress?.let { put("address", it) }
+        })
+    }
+    post("/api/ble/enable") {
+        if (!bar.ble.enable()) return@post call.unavailable("Unable to start BLE")
+        bar.settings.update(SettingsChange.BLE) { it.copy(bleEnabled = true) }
+        call.replyOk()
+    }
+    post("/api/ble/disable") {
+        if (!bar.ble.disable()) return@post call.unavailable("Unable to stop BLE")
+        bar.settings.update(SettingsChange.BLE) { it.copy(bleEnabled = false) }
+        call.replyOk()
+    }
+    delete("/api/ble/pairing") {
+        if (bar.ble.forget()) call.replyOk() else call.unavailable("Unable to remove pairing")
+    }
 
     // ---- Matter ----
     get("/api/smart_home/pairing") {

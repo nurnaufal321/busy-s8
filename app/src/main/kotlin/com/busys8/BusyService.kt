@@ -9,6 +9,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.os.IBinder
+import com.busys8.engine.system.SettingsChange
 import com.busys8.server.BusyServer
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -22,6 +23,7 @@ import kotlinx.coroutines.launch
 class BusyService : Service() {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private var server: BusyServer? = null
+    private var bleBridge: BleBridge? = null
     private var mdns: MdnsAdvertiser? = null
 
     override fun onCreate() {
@@ -34,6 +36,10 @@ class BusyService : Service() {
             Log.println(priority, "JsApp", "[$id] $text")
         }
         server = BusyServer(app.bar, app.assetSource).also { it.start() }
+        val ble = BleBridge(this, app.bar, BusyServer.DEFAULT_PORT, scope).also { bleBridge = it }
+        app.bar.ble = ble
+        if (app.bar.settings.data.bleEnabled) ble.enable()
+        app.bar.settings.subscribe { if (it == SettingsChange.NAME) ble.rename(app.bar.settings.data.name) }
         val advertiser = MdnsAdvertiser(this, BusyServer.DEFAULT_PORT).also { mdns = it }
         scope.launch {
             while (isActive) {
@@ -50,6 +56,7 @@ class BusyService : Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int) = START_STICKY
 
     override fun onDestroy() {
+        bleBridge?.disable()
         server?.stop()
         mdns?.stop()
         scope.cancel()
