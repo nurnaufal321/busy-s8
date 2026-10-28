@@ -90,7 +90,10 @@ fun Route.stubRoutes(bar: Busybar) {
     get("/api/account/status") { call.respondJson(buildJsonObject { put("status", "disconnected") }) }
     post("/api/account/link") { call.unavailable("Cloud account linking is not supported") }
     delete("/api/account") { call.replyOk() }
-    get("/api/account/backend") { call.unavailable("Cloud account is not supported") }
+    // No cloud backend is configured, and none can be.
+    get("/api/account/backend") {
+        call.respondJson(buildJsonObject { put("server_url", ""); put("client_cert_type", "none"); put("ignore_server_cert", false) })
+    }
     put("/api/account/backend") { call.replyError(400, "Cloud account is not supported") }
 
     // ---- Firmware updates ----

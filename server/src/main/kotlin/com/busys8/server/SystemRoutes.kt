@@ -17,7 +17,6 @@ import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import java.time.Instant
-import java.time.OffsetDateTime
 import java.time.ZoneId
 import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
@@ -57,8 +56,12 @@ fun Route.systemRoutes(bar: Busybar) {
 
     get("/api/name") { call.respondJson(buildJsonObject { put("name", bar.settings.data.name) }) }
     post("/api/name") {
-        val name = ((call.jsonBody() as? JsonObject)?.get("name") as? JsonPrimitive)?.takeIf { it.isString }?.content
-        if (name == null || !DeviceSettings.NAME_PATTERN.matches(name)) return@post call.replyError(400, "Bad Request")
+        val body = call.jsonBody() as? JsonObject
+        val name = (body?.get("name") as? JsonPrimitive)?.takeIf { it.isString }?.content
+        // The schema allows no other properties.
+        if (name == null || body.keys != setOf("name") || !DeviceSettings.NAME_PATTERN.matches(name)) {
+            return@post call.replyError(400, "Bad Request")
+        }
         bar.settings.update(SettingsChange.NAME) { it.copy(name = name) }
         call.replyOk()
     }
@@ -93,9 +96,8 @@ fun Route.systemRoutes(bar: Busybar) {
     }
     post("/api/time/timestamp") {
         val raw = call.request.queryParameters["timestamp"].orEmpty()
-        val parsed = runCatching { OffsetDateTime.parse(raw) }.getOrNull()
-        if (parsed == null || !TIMESTAMP_PATTERN.matches(raw)) return@post call.replyError(400, "Invalid timestamp format")
-        if (!platform.setTime(parsed.toInstant().toEpochMilli())) return@post call.replyError(400, "Setting the clock is not allowed on this device")
+        val epochMs = parseTimestamp(raw) ?: return@post call.replyError(400, "Invalid timestamp format")
+        if (!platform.setTime(epochMs)) return@post call.replyError(400, "Setting the clock is not allowed on this device")
         call.replyOk()
     }
     get("/api/time/timezone") { call.respondJson(zoneInfo(platform.timeZone())) }
@@ -136,6 +138,22 @@ fun Route.systemRoutes(bar: Busybar) {
 
 private val TIMESTAMP_PATTERN = Regex("^20[0-9]{2}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])T([01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9](Z|[+-]([01][0-9]|2[0-3])(:?[0-5][0-9])?)$")
 private val TIMEZONE_PATTERN = Regex("^[A-Za-z][A-Za-z0-9 _+\\-/]{0,50}$")
+
+/**
+ * ISO date-time with `Z` or an offset up to ±23:59 (the spec's pattern), to epoch ms. Parsed by
+ * hand because java.time rejects offsets beyond ±18:00.
+ */
+fun parseTimestamp(raw: String): Long? {
+    val m = TIMESTAMP_PATTERN.matchEntire(raw) ?: return null
+    val local = runCatching { java.time.LocalDateTime.parse(raw.substring(0, 19)) }.getOrNull() ?: return null
+    val zone = m.groupValues[4]
+    val offsetMin = if (zone == "Z") 0 else {
+        val digits = zone.drop(1).replace(":", "")
+        val minutes = digits.take(2).toInt() * 60 + (digits.drop(2).toIntOrNull() ?: 0)
+        if (zone[0] == '-') -minutes else minutes
+    }
+    return local.toEpochSecond(java.time.ZoneOffset.UTC) * 1000 - offsetMin * 60_000L
+}
 
 private fun zone(id: String): ZoneId = runCatching { ZoneId.of(id) }.getOrDefault(ZoneId.of("UTC"))
 

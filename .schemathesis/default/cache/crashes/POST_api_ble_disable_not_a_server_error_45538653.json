@@ -1,0 +1,78 @@
+{
+  "operation": "POST /api/ble/disable",
+  "method": "POST",
+  "path_template": "/api/ble/disable",
+  "fingerprint": "45538653",
+  "case_id": "f5fatp",
+  "code_sample": "curl -X POST http://localhost:8080/api/ble/disable",
+  "sequence": [
+    {
+      "method": "POST",
+      "url": "http://localhost:8080/api/ble/disable",
+      "url_template": "http://localhost:8080/api/ble/disable",
+      "headers": {
+        "User-Agent": "schemathesis/4.32.7",
+        "Accept-Encoding": "gzip, deflate, zstd",
+        "Accept": "*/*",
+        "Connection": "keep-alive",
+        "X-Schemathesis-TestCaseId": "f5fatp",
+        "Content-Length": "0"
+      },
+      "response": {
+        "status_code": 503,
+        "headers": {
+          "access-control-allow-origin": "*",
+          "access-control-allow-headers": "*",
+          "content-length": "33",
+          "content-type": "application/json",
+          "connection": "keep-alive"
+        },
+        "body": "{\"error\":\"BLE is not available\"}\n"
+      },
+      "link": null,
+      "checks": [
+        {
+          "name": "not_a_server_error",
+          "status": "failure",
+          "message": "Server error"
+        }
+      ],
+      "meta": {
+        "generation": {
+          "time": 1.500011421740055e-06,
+          "mode": "positive"
+        },
+        "components": {},
+        "phase": {
+          "name": "coverage",
+          "data": {
+            "type": "CoveragePhaseData",
+            "description": "Default positive test case",
+            "location": null,
+            "parameter": null,
+            "parameter_location": null,
+            "scenario": "default_positive_test"
+          }
+        },
+        "pool_draws": [],
+        "pool_misses": [],
+        "semantic_draws": [],
+        "dictionary_draws": [],
+        "constants_draws": [],
+        "raw_containers": {}
+      },
+      "path": "/api/ble/disable",
+      "path_parameters": {},
+      "query": {},
+      "case_headers": {},
+      "cookies": {},
+      "case_body": {
+        "encoding": "none"
+      },
+      "media_type": null,
+      "parent_index": null,
+      "auth_identity": null,
+      "operation": "POST /api/ble/disable"
+    }
+  ]
+}

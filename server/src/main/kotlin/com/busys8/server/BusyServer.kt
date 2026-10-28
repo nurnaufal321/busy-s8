@@ -20,7 +20,9 @@ import io.ktor.server.response.respondText
 import io.ktor.server.routing.delete
 import io.ktor.server.routing.get
 import io.ktor.server.routing.post
+import io.ktor.server.routing.route
 import io.ktor.server.routing.routing
+import io.ktor.server.request.path
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
@@ -75,6 +77,18 @@ fun Application.module(bar: Busybar, assets: AssetSource) {
         appsRoutes(bar)
         stubRoutes(bar)
         statusStream(bar, hub)
+        // Anything under /api that no route took: 405 with Allow for known paths, else 404.
+        route("/api/{rest...}") {
+            handle {
+                val allowed = allowedMethods(call.request.path())
+                if (allowed == null) {
+                    call.replyError(404, "Not Found")
+                } else {
+                    call.response.headers.append("Allow", allowed.joinToString(", "))
+                    call.replyError(405, "Method Not Allowed")
+                }
+            }
+        }
         webUi(assets)
         inputRoutes(bar)
 

@@ -12,6 +12,7 @@ dependencies {
     api(libs.ktor.server.websockets)
     testImplementation(libs.junit)
     testImplementation(libs.ktor.server.test.host)
+    testImplementation(libs.ktor.client.websockets)
     testImplementation(libs.slf4j.nop)
 }
 

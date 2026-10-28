@@ -1,0 +1,85 @@
+{
+  "operation": "POST /api/name",
+  "method": "POST",
+  "path_template": "/api/name",
+  "fingerprint": "ab8a2001",
+  "case_id": "tHOdMP",
+  "code_sample": "curl -X POST -H 'Content-Type: application/json' -d '{\"name\": \"BUSY bar\", \"x-schemathesis-unknown-property\": 42}' http://localhost:8080/api/name",
+  "sequence": [
+    {
+      "method": "POST",
+      "url": "http://localhost:8080/api/name",
+      "url_template": "http://localhost:8080/api/name",
+      "headers": {
+        "User-Agent": "schemathesis/4.32.7",
+        "Accept-Encoding": "gzip, deflate, zstd",
+        "Accept": "*/*",
+        "Connection": "keep-alive",
+        "X-Schemathesis-TestCaseId": "tHOdMP",
+        "Content-Type": "application/json",
+        "Content-Length": "59"
+      },
+      "response": {
+        "status_code": 200,
+        "headers": {
+          "access-control-allow-origin": "*",
+          "access-control-allow-headers": "*",
+          "content-length": "16",
+          "content-type": "application/json",
+          "connection": "keep-alive"
+        },
+        "body": "{\"result\":\"OK\"}\n"
+      },
+      "link": null,
+      "checks": [
+        {
+          "name": "negative_data_rejection",
+          "status": "failure",
+          "message": "Schema-violating request accepted\n\nInvalid data should have been rejected\nExpected: 400, 401, 403, 404, 405, 406, 409, 415, 422, 428, 429, 5xx\nInvalid component: in body - object with unexpected properties"
+        }
+      ],
+      "meta": {
+        "generation": {
+          "time": 9.792012860998511e-06,
+          "mode": "negative"
+        },
+        "components": {
+          "BODY": "negative"
+        },
+        "phase": {
+          "name": "coverage",
+          "data": {
+            "type": "CoveragePhaseData",
+            "description": "Object with unexpected properties",
+            "location": "/additionalProperties",
+            "parameter": "application/json",
+            "parameter_location": "BODY",
+            "scenario": "object_unexpected_properties"
+          }
+        },
+        "pool_draws": [],
+        "pool_misses": [],
+        "semantic_draws": [],
+        "dictionary_draws": [],
+        "constants_draws": [],
+        "raw_containers": {}
+      },
+      "path": "/api/name",
+      "path_parameters": {},
+      "query": {},
+      "case_headers": {},
+      "cookies": {},
+      "case_body": {
+        "encoding": "json",
+        "value": {
+          "name": "BUSY bar",
+          "x-schemathesis-unknown-property": 42
+        }
+      },
+      "media_type": "application/json",
+      "parent_index": null,
+      "auth_identity": null,
+      "operation": "POST /api/name"
+    }
+  ]
+}

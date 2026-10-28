@@ -1,0 +1,8 @@
+{
+  "format_version": 1,
+  "schemathesis_version": "4.32.7",
+  "schema_location": "http://localhost:8080/openapi.yaml",
+  "base_url": "http://localhost:8080",
+  "created_at": "2026-10-28T00:24:14.079406+00:00",
+  "tls_verify": true
+}
