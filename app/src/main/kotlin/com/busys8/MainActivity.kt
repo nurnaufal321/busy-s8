@@ -122,9 +122,9 @@ class MainActivity : ComponentActivity() {
 
 /**
  * Tap = START, long-press = BACK (fires while held), holding on = a long BACK (force-quits a JS
- * app), vertical swipe = mode switch, horizontal
- * drag = the dial: one click per [DIAL_STEP_DP] travelled, right = clockwise, so a long drag
- * scrolls like turning the encoder.
+ * app), horizontal swipe = mode switch (right = next position, towards SETTINGS), vertical drag =
+ * the dial: one click per [DIAL_STEP_DP] travelled, up = clockwise, so a long drag scrolls like
+ * turning the encoder.
  */
 private suspend fun androidx.compose.ui.input.pointer.PointerInputScope.detectBarGestures(controls: PhoneControls) {
     val swipeMin = SWIPE_MIN_DP.dp.toPx()
@@ -162,24 +162,25 @@ private suspend fun androidx.compose.ui.input.pointer.PointerInputScope.detectBa
             val change = event.changes.first()
             val delta = change.positionChange()
             moved += delta
-            if (!longFired && !dialing && abs(moved.x) > slop && abs(moved.x) > abs(moved.y)) {
+            if (!longFired && !dialing && abs(moved.y) > slop && abs(moved.y) > abs(moved.x)) {
                 dialing = true
-                dialCarry = moved.x
+                dialCarry = moved.y
             } else if (dialing) {
-                dialCarry += delta.x
+                dialCarry += delta.y
             }
             if (dialing) {
+                // Up is clockwise (screen y grows downwards).
                 while (abs(dialCarry) >= dialStep) {
-                    val dir = if (dialCarry > 0) 1 else -1
+                    val dir = if (dialCarry < 0) 1 else -1
                     controls.dial(dir)
-                    dialCarry -= dir * dialStep
+                    dialCarry += dir * dialStep
                 }
             }
             if (!change.pressed) break
         }
         if (longFired || dialing) return@awaitEachGesture
         when {
-            abs(moved.y) >= swipeMin && abs(moved.y) > 2 * abs(moved.x) -> controls.moveSwitch(if (moved.y > 0) 1 else -1)
+            abs(moved.x) >= swipeMin && abs(moved.x) > 2 * abs(moved.y) -> controls.moveSwitch(if (moved.x > 0) 1 else -1)
             moved.getDistance() <= slop -> controls.tap()
         }
     }

@@ -44,11 +44,11 @@ emulator. `./gradlew :engine:test` also writes previews of the BUSY app's screen
 
 | Phone | Bar |
 |---|---|
-| Volume up / down, or drag left / right | Dial counter-clockwise / clockwise: move through menus, change values, ±5 min in a session |
+| Volume up / down, or drag up / down | Dial clockwise / counter-clockwise: move through menus, change values, ±5 min in a session |
 | Tap | START (start, pause, resume) |
 | Long-press | BACK (stop a session; resume when paused; leave a menu or app) |
 | Keep holding, about 2 s | Long BACK: force-quits a JS app |
-| Swipe down / up | Mode switch to the next / previous position: BUSY, CUSTOM, OFF, APPS, SETTINGS |
+| Swipe right / left | Mode switch to the next / previous position: BUSY, CUSTOM, OFF, APPS, SETTINGS |
 | Wave over the proximity sensor | OK (dial button: skip the current interval) |
 | Bixby key, if One UI delivers it | Mode switch, next position |
 

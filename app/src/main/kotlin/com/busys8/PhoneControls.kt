@@ -25,8 +25,8 @@ import kotlinx.coroutines.flow.StateFlow
  * | Tap                       | START                                 |
  * | Long-press                | BACK                                  |
  * | Hold about 2 s            | Long BACK (force-quits a JS app)      |
- * | Swipe down / up           | Mode switch to the next / previous position |
- * | Drag left / right         | Encoder, one click per 60 dp          |
+ * | Swipe right / left        | Mode switch to the next / previous position |
+ * | Drag up / down            | Encoder, one click per 60 dp          |
  * | Proximity-sensor wave     | OK (encoder button)                   |
  * | Bixby key (if delivered)  | Mode switch, next position, wrapping  |
  *
