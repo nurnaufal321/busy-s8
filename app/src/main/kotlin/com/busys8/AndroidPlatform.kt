@@ -8,10 +8,17 @@ import android.content.IntentFilter
 import android.media.AudioManager
 import android.media.MediaPlayer
 import android.net.wifi.WifiManager
+import android.hardware.Sensor
+import android.hardware.SensorEvent
+import android.hardware.SensorEventListener
+import android.hardware.SensorManager
 import android.os.BatteryManager
+import android.os.Handler
+import android.os.Looper
 import android.os.SystemClock
 import android.provider.Settings
 import android.util.Log
+import com.busys8.engine.system.AutoBrightness
 import com.busys8.engine.system.BatteryState
 import com.busys8.engine.system.DeviceIds
 import com.busys8.engine.system.Platform
@@ -25,8 +32,9 @@ import java.util.TimeZone
 
 /**
  * [Platform] on the phone. Clock and time zone changes need device owner (DevicePolicyManager
- * on API 28); brightness is a window override the activity applies, plus the system's own
- * auto-brightness for "auto".
+ * on API 28); brightness is a window override the activity applies. "Auto" is the firmware's
+ * own algorithm ([AutoBrightness]) on the phone's light sensor, sampled once a second; without a
+ * light sensor it falls back to the system's auto-brightness.
  */
 class AndroidPlatform(private val context: Context) : Platform {
     private val dpm = context.getSystemService(DevicePolicyManager::class.java)
@@ -38,8 +46,45 @@ class AndroidPlatform(private val context: Context) : Platform {
 
     private val _brightness = MutableStateFlow<Int?>(null)
 
-    /** Manual brightness 0–100 for the activity's window, or null to follow the system (auto). */
+    /** Brightness 0–100 for the activity's window, or null to follow the system. */
     val brightness: StateFlow<Int?> = _brightness
+
+    private val sensors = context.getSystemService(SensorManager::class.java)
+    private val lightSensor: Sensor? = sensors.getDefaultSensor(Sensor.TYPE_LIGHT)
+    private val auto = AutoBrightness()
+    private val main = Handler(Looper.getMainLooper())
+    @Volatile private var lux = 0f
+    private var autoMode = false
+
+    private val lightListener = object : SensorEventListener {
+        override fun onSensorChanged(event: SensorEvent) {
+            lux = event.values[0]
+        }
+
+        override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) = Unit
+    }
+
+    /** LIGHT_SENSOR_SAMPLE_INTERVAL_MS: one sample a second into the moving average. */
+    private val sample = object : Runnable {
+        override fun run() {
+            if (!autoMode) return
+            _brightness.value = auto.add(lux)
+            main.postDelayed(this, 1000)
+        }
+    }
+
+    private fun setAutoMode(on: Boolean) = main.post {
+        if (on == autoMode) return@post
+        autoMode = on
+        if (on) {
+            sensors.registerListener(lightListener, lightSensor, SensorManager.SENSOR_DELAY_NORMAL)
+            _brightness.value = auto.percent
+            main.postDelayed(sample, 1000)
+        } else {
+            sensors.unregisterListener(lightListener)
+            main.removeCallbacks(sample)
+        }
+    }
 
     private val isOwner get() = dpm.isDeviceOwnerApp(context.packageName)
 
@@ -110,12 +155,14 @@ class AndroidPlatform(private val context: Context) : Platform {
     override fun timeZone(): String = TimeZone.getDefault().id
 
     override fun applyBrightness(percent: Int?) {
-        _brightness.value = percent
+        val systemAuto = percent == null && lightSensor == null
+        setAutoMode(percent == null && lightSensor != null)
+        if (percent != null || systemAuto) _brightness.value = percent
         owner("brightness") {
             dpm.setSystemSetting(
                 admin,
                 Settings.System.SCREEN_BRIGHTNESS_MODE,
-                (if (percent == null) Settings.System.SCREEN_BRIGHTNESS_MODE_AUTOMATIC else Settings.System.SCREEN_BRIGHTNESS_MODE_MANUAL).toString(),
+                (if (systemAuto) Settings.System.SCREEN_BRIGHTNESS_MODE_AUTOMATIC else Settings.System.SCREEN_BRIGHTNESS_MODE_MANUAL).toString(),
             )
             true
         }

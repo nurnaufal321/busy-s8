@@ -13,7 +13,10 @@ import com.busys8.engine.input.InputService
 import com.busys8.engine.jsapps.JsApps
 import com.busys8.engine.jsapps.JsHost
 import com.busys8.engine.system.ApiTokens
+import com.busys8.engine.system.AutoOnCall
+import com.busys8.engine.system.Presence
 import com.busys8.engine.system.DeviceSettings
+import com.busys8.engine.system.SettingsChange
 import com.busys8.engine.system.FakePlatform
 import com.busys8.engine.system.Platform
 import com.busys8.engine.timer.AppConfig
@@ -45,6 +48,9 @@ class Busybar(
     private val hooks = LateHooks()
     val input = InputService(clock)
     val timer = BusyTimer(clock, FileTimerStore(File(dataDir, "busy_timer")), hooks)
+    /** Phone extras, driven by the host's camera and microphone (see [applySensorSettings]). */
+    val presence = Presence(clock)
+    val autoOnCall = AutoOnCall(timer, clock)
     private val busyApp = BusyApp(timer, device.storage, device.images, device.anims, playSound, clock)
     private val softOff = SoftOffApp()
 
@@ -82,10 +88,22 @@ class Busybar(
 
     init {
         platform.applyBrightness(settings.data.brightness)
+        applySensorSettings()
+        settings.subscribe { if (it == SettingsChange.OTHER) device.post(sensorScope) { applySensorSettings() } }
         busyApp.exitToDesktop = desktop::returnToSwitchApp
         launcher.onLeave = desktop::returnToSwitchApp
         hooks.bind(desktop)
         device.systemUi = desktop
+    }
+
+    private val sensorScope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.SupervisorJob())
+
+    /** Device thread. */
+    private fun applySensorSettings() {
+        val d = settings.data
+        presence.enabled = d.presence
+        presence.timeoutMs = d.awayAfterMin * 60_000L
+        autoOnCall.enabled = d.autoOnCall
     }
 
     enum class LaunchResult { OK, NOT_FOUND, API_MISMATCH, LOW_PRIORITY }
@@ -125,6 +143,6 @@ class Busybar(
         const val API_VERSION = "27.14.0"
 
         /** Reported as the firmware version (/api/status/firmware, About). */
-        const val FIRMWARE_VERSION = "busy-s8-0.4.0"
+        const val FIRMWARE_VERSION = "busy-s8-0.5.0"
     }
 }

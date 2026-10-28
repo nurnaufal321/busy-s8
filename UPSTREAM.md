@@ -53,5 +53,6 @@ names back to the bundled sources.
 | `engine/.../jsapps/JsApps.kt` | `services/js_app_installer`, `lib/js_app` | tar/tgz staging, install keys, manifest and settings schema |
 | `engine/.../jsapps/JsRuntime.kt`, `resources/jsrunner/prelude.js` | `services/js_runner/*` | Globals, input mapping, `X-busybar-fetch: js`, `localhost` → own API, localStorage file format, end-when-idle; QuickJS (quickjs-kt) instead of JerryScript |
 | `engine/.../apps/JsLauncher.kt` | `system/js_app_launcher`, `main/apps_menu` | Resume-mode launch, low-priority refusal, long BACK force-quit, canvas cleanup; menu lists apps by name |
+| `engine/.../system/Sensors.kt` (`AutoBrightness`) | `services/light_sensor/light_sensor_data.c`, `services/brightness_control/brightness_conv.c` | Moving average, log lux → level 0–15, front display curve |
 | `core/.../AnimBin.kt` | `documentation/File Formats.dox.md`, `scripts/seq2anim.py`, `scripts/flipper/rle.py` | Binary `.anim` decoder: mask RLE/bitmap, pixel RAW/RLE/QOI-like |
 | `engine/.../apps/ListMenu.kt`, `SettingsApp.kt`, BUSY setup scenes | `gui/modules/var_item_list.c`, `main/settings_menu`, `busy_scene_setup*.c` | Dial/OK/BACK editing; settings pages the phone can serve |

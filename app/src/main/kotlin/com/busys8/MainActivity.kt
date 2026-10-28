@@ -7,6 +7,7 @@ import android.view.View
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Arrangement
@@ -14,6 +15,8 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -31,9 +34,11 @@ import androidx.compose.ui.input.pointer.positionChange
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import com.busys8.engine.input.InputKey
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
 import kotlin.math.abs
 
@@ -41,6 +46,11 @@ import kotlin.math.abs
 class MainActivity : ComponentActivity() {
     private lateinit var controls: PhoneControls
     private lateinit var proximity: PhoneControls.ProximityWave
+    private lateinit var camera: PresenceCamera
+    private lateinit var voice: VoiceMonitor
+
+    /** What the sensing loop shows: panel blanked while away, and which sensors are live. */
+    private val sensing = MutableStateFlow(SensingState())
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -50,6 +60,19 @@ class MainActivity : ComponentActivity() {
         val app = BusyS8App.of(this)
         controls = PhoneControls(app.bar, lifecycleScope)
         proximity = controls.ProximityWave(this)
+        camera = PresenceCamera(this, app.bar, lifecycleScope)
+        voice = VoiceMonitor(app.bar, lifecycleScope)
+        lifecycleScope.launch {
+            // Follows the Sensors settings once a second; the camera and mic run only while on.
+            while (true) {
+                val d = app.bar.settings.data
+                val resumed = lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)
+                if (d.presence && resumed) camera.start() else camera.stop()
+                if (d.autoOnCall && resumed) voice.start() else voice.stop()
+                sensing.value = SensingState(away = app.bar.presence.away, camera = camera.running, mic = voice.running)
+                delay(1000)
+            }
+        }
         lifecycleScope.launch {
             app.platform.brightness.collect { level ->
                 window.attributes = window.attributes.apply {
@@ -59,9 +82,11 @@ class MainActivity : ComponentActivity() {
         }
         setContent {
             val frame by app.device.frames.collectAsState()
-            Box(Modifier.fillMaxSize().pointerInput(Unit) { detectBarGestures(controls) }) {
-                LedPanel(frame)
+            val state by sensing.collectAsState()
+            Box(Modifier.fillMaxSize().background(Color.Black).pointerInput(Unit) { detectBarGestures(controls) }) {
+                if (!state.away) LedPanel(frame)
                 SwitchStrip(controls)
+                SensorDots(state)
             }
         }
     }
@@ -76,6 +101,8 @@ class MainActivity : ComponentActivity() {
 
     override fun onPause() {
         proximity.stop()
+        camera.stop()
+        voice.stop()
         super.onPause()
     }
 
@@ -104,6 +131,11 @@ private suspend fun androidx.compose.ui.input.pointer.PointerInputScope.detectBa
     val dialStep = DIAL_STEP_DP.dp.toPx()
     awaitEachGesture {
         val down = awaitFirstDown()
+        if (controls.wakeIfAway()) {
+            // The first touch on a dark panel only wakes it.
+            do { val e = awaitPointerEvent() } while (e.changes.any { it.pressed })
+            return@awaitEachGesture
+        }
         val slop = viewConfiguration.touchSlop
         var moved = Offset.Zero
         var longFired = false
@@ -149,6 +181,23 @@ private suspend fun androidx.compose.ui.input.pointer.PointerInputScope.detectBa
         when {
             abs(moved.y) >= swipeMin && abs(moved.y) > 2 * abs(moved.x) -> controls.moveSwitch(if (moved.y > 0) 1 else -1)
             moved.getDistance() <= slop -> controls.tap()
+        }
+    }
+}
+
+data class SensingState(val away: Boolean = false, val camera: Boolean = false, val mic: Boolean = false)
+
+/**
+ * Privacy indicators, since Android 9 has none: a green dot while the camera is on, an orange
+ * one while the microphone is, in the top-right corner outside the LED grid.
+ */
+@Composable
+private fun SensorDots(state: SensingState) {
+    if (!state.camera && !state.mic) return
+    Box(Modifier.fillMaxSize().padding(top = 12.dp, end = 24.dp), contentAlignment = Alignment.TopEnd) {
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            if (state.camera) Box(Modifier.size(8.dp).background(Color(0xFF22C55E), CircleShape))
+            if (state.mic) Box(Modifier.size(8.dp).background(Color(0xFFFF8A00), CircleShape))
         }
     }
 }

@@ -33,6 +33,11 @@ data class SettingsData(
     val smartSwitchState: Boolean = false,
     val smartSwitchStartup: String = "last",
     val clock12h: Boolean = false,
+    /** Blank the panel when the front camera has seen nobody for [awayAfterMin] minutes. */
+    val presence: Boolean = false,
+    val awayAfterMin: Int = 5,
+    /** Start an ON CALL session while someone keeps talking (microphone, on the phone only). */
+    val autoOnCall: Boolean = false,
 ) {
     companion object {
         const val DEFAULT_NAME = "BUSY Bar"

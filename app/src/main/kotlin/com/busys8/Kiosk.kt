@@ -41,9 +41,10 @@ object Kiosk {
             addCategory(Intent.CATEGORY_DEFAULT)
         }
         dpm.addPersistentPreferredActivity(admin, home, ComponentName(context, MainActivity::class.java))
-        dpm.setPermissionGrantState(
-            admin, context.packageName, Manifest.permission.ACCESS_FINE_LOCATION, DevicePolicyManager.PERMISSION_GRANT_STATE_GRANTED,
-        )
+        // Location (Wi-Fi SSID), and the camera and microphone the Sensors settings switch on.
+        for (permission in listOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.CAMERA, Manifest.permission.RECORD_AUDIO)) {
+            dpm.setPermissionGrantState(admin, context.packageName, permission, DevicePolicyManager.PERMISSION_GRANT_STATE_GRANTED)
+        }
     }
 
     fun enterLockTask(activity: Activity) {

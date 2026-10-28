@@ -41,6 +41,13 @@ class PhoneControls(private val bar: Busybar, private val scope: CoroutineScope)
 
     val switchPosition get() = bar.desktop.switchPosition
 
+    /** Wakes a panel blanked by presence; true if it was dark (the input is then used up). */
+    fun wakeIfAway(): Boolean {
+        val away = bar.presence.away
+        post { bar.presence.seen() }
+        return away
+    }
+
     fun tap() = toggle(InputKey.START)
 
     fun longPress() = toggle(InputKey.BACK)
@@ -69,6 +76,7 @@ class PhoneControls(private val bar: Busybar, private val scope: CoroutineScope)
     /** Returns true when the key event was used. */
     fun onKey(event: KeyEvent): Boolean {
         val down = event.action == KeyEvent.ACTION_DOWN
+        if (down && event.keyCode != KeyEvent.KEYCODE_BACK && wakeIfAway()) return true
         val key = when (event.keyCode) {
             KeyEvent.KEYCODE_VOLUME_UP, KeyEvent.KEYCODE_DPAD_UP -> InputKey.UP
             KeyEvent.KEYCODE_VOLUME_DOWN, KeyEvent.KEYCODE_DPAD_DOWN -> InputKey.DOWN

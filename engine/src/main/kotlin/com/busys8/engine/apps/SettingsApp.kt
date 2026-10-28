@@ -26,6 +26,7 @@ class SettingsApp(
         listOf(
             ListMenu.Action("Brightness") { page = brightness() },
             ListMenu.Action("Sound") { page = sound() },
+            ListMenu.Action("Sensors") { page = sensors() },
             ListMenu.Action("Time") { page = time() },
             ListMenu.Action("Network") { page = network() },
             ListMenu.Action("About") { page = about() },
@@ -67,6 +68,18 @@ class SettingsApp(
     private fun setBrightness(level: Int?) {
         settings.update(SettingsChange.BRIGHTNESS) { it.copy(brightness = level) }
         platform.applyBrightness(level)
+    }
+
+    /** Phone-only extras: the camera and microphone, each off until switched on here. */
+    private fun sensors(): ListMenu = ListMenu("Sensors") {
+        val d = settings.data
+        listOf(
+            ListMenu.Switch("Presence", { d.presence }, { on -> settings.update(SettingsChange.OTHER) { it.copy(presence = on) } }),
+            ListMenu.Number("Away after", 1, 60, 1, { d.awayAfterMin }, { m ->
+                settings.update(SettingsChange.OTHER) { it.copy(awayAfterMin = m) }
+            }, { "$it min" }, visible = d.presence),
+            ListMenu.Switch("Auto ON CALL", { d.autoOnCall }, { on -> settings.update(SettingsChange.OTHER) { it.copy(autoOnCall = on) } }),
+        )
     }
 
     private fun sound(): ListMenu = ListMenu("Sound") {

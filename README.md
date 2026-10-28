@@ -20,7 +20,7 @@ Unofficial; not affiliated with Flipper Devices. See [NOTICE](NOTICE).
 | 3 | Rest of the API, status stream, bundled web UI, mDNS, setup and settings screens | done |
 | 3b | Bluetooth bridge for the official BUSY app (best effort) | |
 | 4 | QuickJS runtime for JS apps, APPS menu, binary `.anim` | done |
-| 5 | Auto brightness, presence, auto ON CALL | |
+| 5 | Auto brightness, presence, auto ON CALL | done |
 
 Endpoint-level status: [API_COVERAGE.md](API_COVERAGE.md). Upstream versions:
 [UPSTREAM.md](UPSTREAM.md).
@@ -81,6 +81,23 @@ so the phone serves that API itself (`/weather/v1/forecast` and `/locations`) fr
 [Open-Meteo](https://open-meteo.com). With the location on Auto, the bar's time zone picks the
 city, e.g. Asia/Singapore → Singapore; set a city in the app's settings in the web UI for
 anywhere else.
+
+## Sensors
+
+- **Auto brightness** (SETTINGS → Brightness → Auto) is the firmware's own algorithm on the
+  phone's light sensor: one sample a second, a 5-sample average, lux on a log scale to 16
+  levels, then the front display's brightness curve.
+- **Presence** (SETTINGS → Sensors, off by default): the front camera looks for faces about twice
+  a second with ML Kit's on-device detector; after *Away after* minutes without one, the panel goes
+  dark, and it lights up again when someone looks at it. Touching the phone also counts, and the
+  first touch or key on a dark panel only wakes it.
+- **Auto ON CALL** (SETTINGS → Sensors, off by default): the microphone feeds a voice activity
+  detector; about 3 seconds of talk within 6 starts the CUSTOM profile with the `on_call` theme as
+  an endless session, and a minute of silence ends it. It never replaces a session someone else
+  started, and leaves alone a session that was changed after it started.
+
+Camera frames and audio are processed in memory and never stored or sent. While the camera is
+on a green dot shows in the top-right corner, and an orange one while the microphone is.
 
 The panel guards against AMOLED burn-in: the LED grid orbits by half an LED every 2 minutes,
 and static content dims to 40% after 5 minutes.

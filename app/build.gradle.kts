@@ -50,5 +50,8 @@ dependencies {
     implementation(libs.activity.compose)
     implementation(libs.slf4j.nop)
     implementation(libs.jmdns)
+    implementation(libs.camera.camera2)
+    implementation(libs.camera.lifecycle)
+    implementation(libs.mlkit.face)
     testImplementation(libs.junit)
 }
