@@ -22,7 +22,7 @@ class SettingsApp(
 ) : NativeApp {
     override val priority = LoaderPriority.DEFAULT
 
-    private val topPage: ListMenu = ListMenu {
+    private val topPage: ListMenu = ListMenu("Settings") {
         listOf(
             ListMenu.Action("Brightness") { page = brightness() },
             ListMenu.Action("Sound") { page = sound() },
@@ -35,6 +35,7 @@ class SettingsApp(
 
     override fun onEnter(nowMs: Long) {
         page = topPage
+        topPage.flashTitle()
     }
 
     override fun onInput(event: InputEvent, nowMs: Long): Boolean {
@@ -42,17 +43,18 @@ class SettingsApp(
         if (page.input(event.key)) return true
         if (event.key == InputKey.BACK && page !== topPage) {
             page = topPage
+            topPage.flashTitle()
             return true
         }
         return false
     }
 
     override fun render(front: Gfx, back: Gfx, nowMs: Long) {
-        page.renderFront(front)
+        page.renderFront(front, nowMs)
         page.renderBack(back)
     }
 
-    private fun brightness(): ListMenu = ListMenu {
+    private fun brightness(): ListMenu = ListMenu("Brightness") {
         val level = settings.data.brightness
         listOf(
             ListMenu.Choice("Mode", listOf("Auto", "Manual"), { if (level == null) 0 else 1 }, set = { i ->
@@ -67,7 +69,7 @@ class SettingsApp(
         platform.applyBrightness(level)
     }
 
-    private fun sound(): ListMenu = ListMenu {
+    private fun sound(): ListMenu = ListMenu("Sound") {
         listOf(
             ListMenu.Number("Volume", 0, 100, 10, { platform.volume() }, { v ->
                 platform.setVolume(v)
@@ -80,7 +82,7 @@ class SettingsApp(
         ZoneId.getAvailableZoneIds().filter { it.contains('/') && !it.startsWith("Etc/") && !it.startsWith("SystemV/") }.sorted()
     }
 
-    private fun time(): ListMenu = ListMenu {
+    private fun time(): ListMenu = ListMenu("Time") {
         listOf(
             ListMenu.Choice("Time zone", zones.map { it.substringAfterLast('/').replace('_', ' ') }, { zones.indexOf(platform.timeZone()).coerceAtLeast(0) }, set = { i ->
                 if (platform.setTimeZone(zones[i])) settings.notifyChanged(SettingsChange.TIMEZONE)
@@ -91,7 +93,7 @@ class SettingsApp(
         )
     }
 
-    private fun network(): ListMenu = ListMenu {
+    private fun network(): ListMenu = ListMenu("Network") {
         val lines = networkLines()
         val wifi = platform.wifi()
         listOfNotNull(
@@ -102,7 +104,7 @@ class SettingsApp(
         )
     }
 
-    private fun about(): ListMenu = ListMenu {
+    private fun about(): ListMenu = ListMenu("About") {
         val p = platform.power()
         val upS = platform.uptimeMs() / 1000
         listOf(

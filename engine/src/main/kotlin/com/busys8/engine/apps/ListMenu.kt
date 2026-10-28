@@ -13,7 +13,15 @@ import com.busys8.engine.input.InputKey
  * The front display shows one item at a time: its label, and its value on the right with
  * arrows while editing. The back display shows the whole list.
  */
-class ListMenu(private val items: () -> List<Item>) {
+class ListMenu(private val title: String? = null, private val items: () -> List<Item>) {
+    /** When the title was last flashed; 0 = on the next render. */
+    private var titleShownAtMs = 0L
+
+    /** Shows the page title on the front display again (e.g. when returning to this page). */
+    fun flashTitle() {
+        titleShownAtMs = 0
+    }
+
     sealed interface Item {
         val label: String
         val visible: Boolean get() = true
@@ -94,8 +102,19 @@ class ListMenu(private val items: () -> List<Item>) {
         is Switch -> if (item.get()) "On" else "Off"
     }
 
-    /** One item: label on the left, value on the right, position dots along the bottom. */
-    fun renderFront(front: Gfx) {
+    /**
+     * One item: label on the left, value on the right, position dots along the bottom. For the
+     * first [TITLE_MS] after entering, the page title is shown instead, since the phone has no
+     * back display to carry the bar's location header.
+     */
+    fun renderFront(front: Gfx, nowMs: Long) {
+        if (title != null) {
+            if (titleShownAtMs == 0L) titleShownAtMs = nowMs
+            if (nowMs - titleShownAtMs < TITLE_MS) {
+                front.text(title.uppercase(), ApiFont.NORMAL, 36, 8, LABEL_COLOR, Align.CENTER)
+                return
+            }
+        }
         val list = shown()
         if (list.isEmpty()) return
         focus = focus.coerceIn(0, list.lastIndex)
@@ -133,6 +152,7 @@ class ListMenu(private val items: () -> List<Item>) {
     }
 
     private companion object {
+        const val TITLE_MS = 900L
         const val LABEL_COLOR = 0xFFFFFFFF.toInt()
         const val VALUE_COLOR = 0xFFB0B0B0.toInt()
         const val EDIT_COLOR = 0xFFFFD000.toInt()

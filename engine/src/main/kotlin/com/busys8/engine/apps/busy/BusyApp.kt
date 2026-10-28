@@ -190,7 +190,7 @@ class BusyApp(
 
     /** busy_scene_setup: Timer, Theme and Smart home for the current profile. */
     private inner class SetupScene(private val startFocus: Int = 0) : Scene() {
-        private val menu = ListMenu {
+        private val menu = ListMenu("Setup") {
             val p = timer.profile(slot)
             listOf(
                 ListMenu.Action("Timer", { MODE_NAMES.getValue(p.timer.mode) }) { go(SetupTimerScene(), clock()) },
@@ -210,7 +210,7 @@ class BusyApp(
             if (!menu.input(InputKey.BACK)) go(StartScene(), nowMs)
         }
 
-        override fun renderFront(g: Gfx, nowMs: Long) = menu.renderFront(g)
+        override fun renderFront(g: Gfx, nowMs: Long) = menu.renderFront(g, nowMs)
 
         override fun renderBack(g: Gfx, nowMs: Long) = menu.renderBack(g)
     }
@@ -231,7 +231,7 @@ class BusyApp(
 
         private fun interval(ms: Long, default: Int) = if (mode == TimerMode.INTERVAL) (ms / 60_000).toInt() else default
 
-        private val menu = ListMenu {
+        private val menu = ListMenu("Timer") {
             val simple = mode == TimerMode.SIMPLE
             val interval = mode == TimerMode.INTERVAL
             listOf(
@@ -275,7 +275,7 @@ class BusyApp(
             timer.setPreset(slot, config, cur.app.copy(showWorkOnly = showWorkOnly))
         }
 
-        override fun renderFront(g: Gfx, nowMs: Long) = menu.renderFront(g)
+        override fun renderFront(g: Gfx, nowMs: Long) = menu.renderFront(g, nowMs)
 
         override fun renderBack(g: Gfx, nowMs: Long) = menu.renderBack(g)
     }
