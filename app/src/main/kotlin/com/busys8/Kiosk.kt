@@ -29,7 +29,9 @@ object Kiosk {
             return
         }
         val admin = ComponentName(context, AdminReceiver::class.java)
-        dpm.setLockTaskPackages(admin, arrayOf(context.packageName))
+        // Settings too: on Samsung its Bluetooth pairing prompt is a Settings window, and lock
+        // task would otherwise block it, so a phone could never pair over Bluetooth.
+        dpm.setLockTaskPackages(admin, arrayOf(context.packageName, "com.android.settings"))
         dpm.setKeyguardDisabled(admin, true)
         dpm.setStatusBarDisabled(admin, true)
         // Never sleep on any power source: "sleep" is drawn as black pixels instead.

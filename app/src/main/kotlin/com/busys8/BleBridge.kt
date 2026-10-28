@@ -74,7 +74,9 @@ class BleBridge(
     private var advertising = false
     private var enabled = false
     @Volatile private var peer: BluetoothDevice? = null
-    @Volatile private var mtu = DEFAULT_MTU
+    /** ATT MTU per connected device; the client's decides the chunk size. */
+    private val mtus = java.util.concurrent.ConcurrentHashMap<String, Int>()
+    private val mtu get() = peer?.let { mtus[it.address] } ?: DEFAULT_MTU
     private var failed = false
 
     private val uartTx = characteristic(UART_TX, READ or INDICATE, PERM_R, cccd = true)
@@ -285,40 +287,28 @@ class BleBridge(
 
         override fun onConnectionStateChange(device: BluetoothDevice, status: Int, newState: Int) {
             Log.i(TAG, "connection ${device.address} state=$newState status=$status bond=${device.bondState}")
-            if (newState == BluetoothProfile.STATE_CONNECTED) {
-                if (peer != null && peer?.address != device.address) {
-                    // One client at a time, like the bar.
-                    server?.cancelConnection(device)
-                    return
-                }
-                peer = device
-                mtu = DEFAULT_MTU
-                subscribed.clear()
-                // ble_event_handler_smp_ltk_request: an unpaired peer is asked to pair.
-                if (device.bondState == BluetoothDevice.BOND_NONE) {
-                    Log.i(TAG, "requesting pairing with ${device.address}")
-                    device.createBond()
-                }
-                startStream()
-            } else if (newState == BluetoothProfile.STATE_DISCONNECTED && peer?.address == device.address) {
+            // Any number of links may come and go (phones keep idle LE links open); the client is
+            // whichever device starts using the bar's services, see claim().
+            if (newState == BluetoothProfile.STATE_DISCONNECTED) mtus.remove(device.address)
+            if (newState == BluetoothProfile.STATE_DISCONNECTED && peer?.address == device.address) {
                 peer = null
                 subscribed.clear()
                 streamJob?.cancel()
                 repeater.close()
                 txDone.release()
+                changed()
             }
-            changed()
         }
 
         override fun onMtuChanged(device: BluetoothDevice, newMtu: Int) {
-            Log.i(TAG, "mtu $newMtu")
-            mtu = newMtu
+            Log.i(TAG, "mtu $newMtu from ${device.address}")
+            mtus[device.address] = newMtu
         }
 
         override fun onCharacteristicReadRequest(device: BluetoothDevice, requestId: Int, offset: Int, c: BluetoothGattCharacteristic) {
             if (c.uuid == battery.uuid) c.value = byteArrayOf(bar.platform.power().chargePercent.coerceIn(0, 100).toByte())
             val value = c.value ?: ByteArray(0)
-            Log.d(TAG, "read ${name(c.uuid)} offset=$offset (${value.size} bytes)")
+            Log.d(TAG, "read ${name(c.uuid)} by ${device.address} offset=$offset (${value.size} bytes)")
             val slice = if (offset < value.size) value.copyOfRange(offset, value.size) else ByteArray(0)
             server?.sendResponse(device, requestId, BluetoothGatt.GATT_SUCCESS, offset, slice)
         }
@@ -328,6 +318,7 @@ class BleBridge(
             preparedWrite: Boolean, responseNeeded: Boolean, offset: Int, value: ByteArray,
         ) {
             Log.d(TAG, "write ${name(c.uuid)} ${value.size} bytes" + if (c.uuid == UART_RX) ": ${preview(value)}" else "")
+            if (c.uuid == UART_RX || c.uuid == UART_SESSION) claim(device)
             when (c.uuid) {
                 UART_RX -> repeater.send(value)
                 UART_SESSION -> if (value.size == 4) {
@@ -354,6 +345,7 @@ class BleBridge(
         ) {
             val on = value.isNotEmpty() && value[0].toInt() != 0
             val uuid = d.characteristic.uuid
+            if (on) claim(device)
             if (on) subscribed += uuid else subscribed -= uuid
             Log.i(TAG, "${if (on) "subscribe" else "unsubscribe"} ${name(uuid)}")
             if (responseNeeded) server?.sendResponse(device, requestId, BluetoothGatt.GATT_SUCCESS, 0, null)
@@ -375,6 +367,17 @@ class BleBridge(
                 changed()
             }
         }
+    }
+
+    /** Makes [device] the client once it subscribes or writes (one at a time, like the bar). */
+    private fun claim(device: BluetoothDevice) {
+        if (peer?.address == device.address) return
+        Log.i(TAG, "client is now ${device.address}")
+        peer = device
+        subscribed.clear()
+        repeater.close()
+        startStream()
+        changed()
     }
 
     /** Sends one notification (or indication on Nordic TX) and waits for it to go out. */

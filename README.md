@@ -18,7 +18,7 @@ Unofficial; not affiliated with Flipper Devices. See [NOTICE](NOTICE).
 | 1 | Kiosk shell, LED renderer, `POST/DELETE /api/display/draw` | done |
 | 2 | `busy_timer` port, BUSY app, `/api/busy/*`, `/api/input`, phone controls, burn-in protection | done |
 | 3 | Rest of the API, status stream, bundled web UI, mDNS, setup and settings screens | done |
-| 3b | Bluetooth bridge for the official BUSY app (best effort) | |
+| 3b | Bluetooth bridge for the official BUSY app | done: pairs and works, no cloud account |
 | 4 | QuickJS runtime for JS apps, APPS menu, binary `.anim` | done |
 | 5 | Auto brightness, presence, auto ON CALL | done |
 
@@ -61,6 +61,14 @@ Space = START, Esc/Backspace = BACK, 1–5 = switch positions.
 APPS lists the installed JS apps; turn the dial to pick one and tap to start it. A running app
 gets the dial, tap (START), long-press (BACK) and the proximity wave (OK); most apps quit on BACK,
 and holding about 2 s always force-quits.
+
+## Official BUSY app (Bluetooth)
+
+Turn Bluetooth on (SETTINGS → Bluetooth on the phone, or the web UI), then add a bar in the
+official BUSY app: the phone shows up as "BUSY Bar". When you connect, Android's pairing prompt
+appears on the phone; accept it. The app then controls the phone over Bluetooth like a real bar.
+Linking a BUSY account does not work (it needs Flipper's cloud). SETTINGS → Bluetooth → Forget
+pairing removes the paired phone.
 
 ## JS apps
 
