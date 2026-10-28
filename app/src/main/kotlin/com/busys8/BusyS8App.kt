@@ -24,6 +24,8 @@ class BusyS8App : Application() {
     lateinit var bar: Busybar
         private set
     private lateinit var sounds: SoundPlayer
+    lateinit var platform: AndroidPlatform
+        private set
 
     override fun onCreate() {
         super.onCreate()
@@ -32,7 +34,8 @@ class BusyS8App : Application() {
         sounds = SoundPlayer(assets, device.storage)
         val prefs = getSharedPreferences(PREFS, MODE_PRIVATE)
         val switch = InputKey.fromApi(prefs.getString(KEY_SWITCH, null).orEmpty())?.takeIf { it.isSwitch } ?: InputKey.BUSY
-        bar = Busybar(device, File(filesDir, "data"), sounds::play, switchPosition = switch)
+        platform = AndroidPlatform(this)
+        bar = Busybar(device, File(filesDir, "data"), sounds::play, switchPosition = switch, platform = platform)
         bar.desktop.onSwitchMoved = { prefs.edit().putString(KEY_SWITCH, it.apiName).apply() }
     }
 

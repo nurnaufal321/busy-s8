@@ -1,5 +1,6 @@
 package com.busys8
 
+import android.Manifest
 import android.app.Activity
 import android.app.admin.DeviceAdminReceiver
 import android.app.admin.DevicePolicyManager
@@ -40,6 +41,9 @@ object Kiosk {
             addCategory(Intent.CATEGORY_DEFAULT)
         }
         dpm.addPersistentPreferredActivity(admin, home, ComponentName(context, MainActivity::class.java))
+        dpm.setPermissionGrantState(
+            admin, context.packageName, Manifest.permission.ACCESS_FINE_LOCATION, DevicePolicyManager.PERMISSION_GRANT_STATE_GRANTED,
+        )
     }
 
     fun enterLockTask(activity: Activity) {

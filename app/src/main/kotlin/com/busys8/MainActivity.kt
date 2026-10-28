@@ -34,6 +34,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.lifecycleScope
 import com.busys8.engine.input.InputKey
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlin.math.abs
 
 /** The kiosk HOME screen: the LED panel full screen, the phone's controls, never sleeping. */
@@ -49,6 +50,13 @@ class MainActivity : ComponentActivity() {
         val app = BusyS8App.of(this)
         controls = PhoneControls(app.bar, lifecycleScope)
         proximity = controls.ProximityWave(this)
+        lifecycleScope.launch {
+            app.platform.brightness.collect { level ->
+                window.attributes = window.attributes.apply {
+                    screenBrightness = level?.let { maxOf(it, 1) / 100f } ?: WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_NONE
+                }
+            }
+        }
         setContent {
             val frame by app.device.frames.collectAsState()
             Box(Modifier.fillMaxSize().pointerInput(Unit) { detectBarGestures(controls) }) {
