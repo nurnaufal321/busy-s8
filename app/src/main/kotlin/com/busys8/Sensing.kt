@@ -92,7 +92,7 @@ class PresenceCamera(private val activity: androidx.activity.ComponentActivity, 
         faces.fill(null)
         if ((found > 0) != sawFace) {
             sawFace = found > 0
-            Log.i(TAG, if (sawFace) "face seen ($found)" else "no face")
+            Log.d(TAG, if (sawFace) "face seen ($found)" else "no face")
         }
         if (found > 0) bar.device.post(scope) { bar.presence.seen() }
     }
