@@ -12,6 +12,7 @@ import io.ktor.server.routing.delete
 import io.ktor.server.routing.get
 import io.ktor.server.routing.post
 import io.ktor.server.routing.put
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.booleanOrNull
@@ -80,26 +81,49 @@ fun Route.stubRoutes(bar: Busybar) {
         if (bar.ble.forget()) call.replyOk() else call.unavailable("Unable to remove pairing")
     }
 
-    // ---- Matter ----
+    // ---- Smart home (api_smart_home.c), backed by the phone's Matter device ----
     get("/api/smart_home/pairing") {
+        val m = bar.matter
+        if (!m.available) return@get call.unavailable("Smart home unavailable")
         call.respondJson(buildJsonObject {
-            put("fabric_count", 0)
-            putJsonObject("latest_pairing_status") { put("value", "never_started"); put("timestamp", 0) }
+            put("fabric_count", m.fabricCount)
+            putJsonObject("latest_pairing_status") {
+                put("value", m.pairingStatus)
+                if (m.pairingStatusAtMs > 0) put("timestamp", m.pairingStatusAtMs / 1000)
+            }
         })
     }
-    post("/api/smart_home/pairing") { call.unavailable("Smart home pairing is not available") }
-    delete("/api/smart_home/pairing") { call.unavailable("Smart home pairing is not available") }
+    post("/api/smart_home/pairing") {
+        val m = bar.matter
+        val seconds = m.openWindow()
+        val qr = m.qrCode
+        val code = m.manualCode
+        if (seconds == null || qr == null || code == null) return@post call.unavailable("Smart home unavailable")
+        call.respondJson(buildJsonObject {
+            put("available_until", (System.currentTimeMillis() + seconds * 1000L).toString())
+            put("qr_code", qr)
+            put("manual_code", code)
+        })
+    }
+    delete("/api/smart_home/pairing") {
+        if (bar.matter.factoryReset()) call.replyOk() else call.unavailable("Smart home unavailable")
+    }
     get("/api/smart_home/switch") {
-        val s = bar.settings.data
-        call.respondJson(buildJsonObject { put("state", s.smartSwitchState); put("startup", s.smartSwitchStartup) })
+        val state = withContext(bar.device.dispatcher) { bar.smartHome.state }
+            ?: return@get call.unavailable("Smart home unavailable")
+        call.respondJson(buildJsonObject { put("state", state); put("startup", bar.settings.data.smartSwitchStartup) })
     }
     post("/api/smart_home/switch") {
         val body = call.jsonBody() as? JsonObject ?: return@post call.replyError(400, "Bad Request")
         val state = (body["state"] as? JsonPrimitive)?.booleanOrNull
-        val startup = (body["startup"] as? JsonPrimitive)?.content?.takeIf { it in setOf("off", "on", "toggle", "last") }
-        bar.settings.update(SettingsChange.OTHER) {
-            it.copy(smartSwitchState = state ?: it.smartSwitchState, smartSwitchStartup = startup ?: it.smartSwitchStartup)
+        val startup = (body["startup"] as? JsonPrimitive)?.content
+        if (state == null && startup == null) return@post call.replyError(400, "Bad Request")
+        if (startup != null && startup !in setOf("off", "on", "toggle", "last")) return@post call.replyError(400, "Bad Request")
+        if (state != null) {
+            if (!bar.matter.available) return@post call.unavailable("Smart home unavailable")
+            withContext(bar.device.dispatcher) { bar.smartHome.handleSwitch(state, fromMatter = false) }
         }
+        if (startup != null) bar.settings.update(SettingsChange.OTHER) { it.copy(smartSwitchStartup = startup) }
         call.replyOk()
     }
 

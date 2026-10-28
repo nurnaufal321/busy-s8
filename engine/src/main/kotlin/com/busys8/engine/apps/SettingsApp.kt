@@ -8,7 +8,9 @@ import com.busys8.engine.input.InputKey
 import com.busys8.engine.input.InputType
 import com.busys8.engine.system.BleControl
 import com.busys8.engine.system.DeviceSettings
+import com.busys8.engine.system.MatterLink
 import com.busys8.engine.system.NoBle
+import com.busys8.engine.system.NoMatter
 import com.busys8.engine.system.Platform
 import com.busys8.engine.system.SettingsChange
 import java.time.ZoneId
@@ -26,6 +28,7 @@ class SettingsApp(
     images: ImageLoader,
     anims: AnimLoader,
     private val ble: () -> BleControl = { NoBle },
+    private val matter: () -> MatterLink = { NoMatter },
 ) : NativeApp {
     override val priority = LoaderPriority.DEFAULT
 
@@ -37,6 +40,7 @@ class SettingsApp(
             ListMenu.Action("Time") { page = time() },
             ListMenu.Action("Network") { page = network() },
             ListMenu.Action("Bluetooth") { openBluetooth = true },
+            ListMenu.Action("Smart home") { page = smartHome() },
             ListMenu.Action("About") { page = about() },
         )
     }
@@ -147,6 +151,18 @@ class SettingsApp(
             ListMenu.Choice("Time format", listOf("24 h", "12 h"), { if (settings.data.clock12h) 1 else 0 }, set = { i ->
                 settings.update(SettingsChange.OTHER) { it.copy(clock12h = i == 1) }
             }),
+        )
+    }
+
+    /** Matter: the code to pair with, how many ecosystems have, and a fresh pairing window. */
+    private fun smartHome(): ListMenu = ListMenu("Smart home") {
+        val m = matter()
+        if (!m.available) return@ListMenu listOf(ListMenu.Action("Status", { "unavailable" }) {})
+        val code = m.manualCode?.let { "${it.take(4)}-${it.drop(4).take(3)}-${it.drop(7)}" } ?: "..."
+        listOf(
+            ListMenu.Action("Pair", { code }) { m.openWindow() },
+            ListMenu.Action("Paired with", { "${m.fabricCount}" }) {},
+            ListMenu.Action("Forget all", { if (m.fabricCount == 0) "" else "${m.fabricCount}" }) { m.factoryReset() },
         )
     }
 

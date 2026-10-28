@@ -51,6 +51,9 @@ class BusyTimer(
 
     /** BUSY app settings of the current session. */
     val appConfig get() = app
+
+    /** Seconds into the current interval (time_elapsed_s). */
+    val elapsedSeconds get() = elapsedS
     /** null mirrors BusyTimerModeMax: nothing configured (after a NOT_STARTED snapshot). */
     private var mode: TimerMode? = null
     private var config = TimerConfig(TimerMode.INFINITE)

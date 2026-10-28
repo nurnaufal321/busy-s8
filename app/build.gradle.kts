@@ -19,6 +19,9 @@ android {
 
     sourceSets["main"].assets.srcDir(rootProject.file("vendor"))
     // SoundPool reads WAVs through file descriptors, which needs them stored uncompressed.
+    // busy-matter (libbusymatter.so) is a program, run from the extracted native library dir.
+    packaging { jniLibs { useLegacyPackaging = true } }
+
     androidResources {
         noCompress += "wav"
         // The default pattern drops directories starting with "_", which removes the web UI's _nuxt/.

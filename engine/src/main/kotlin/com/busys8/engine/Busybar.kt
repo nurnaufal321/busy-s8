@@ -15,6 +15,7 @@ import com.busys8.engine.jsapps.JsHost
 import com.busys8.engine.system.ApiTokens
 import com.busys8.engine.system.AutoOnCall
 import com.busys8.engine.system.Presence
+import com.busys8.engine.system.SmartHomeSwitch
 import com.busys8.engine.system.DeviceSettings
 import com.busys8.engine.system.SettingsChange
 import com.busys8.engine.system.FakePlatform
@@ -51,6 +52,10 @@ class Busybar(
     /** The Bluetooth bridge; the host replaces this with its GATT server. */
     @Volatile var ble: com.busys8.engine.system.BleControl = com.busys8.engine.system.NoBle
 
+    /** The smart-home switch (busy_timer_smart_home.c) and the Matter device carrying it. */
+    val smartHome = SmartHomeSwitch(timer)
+    @Volatile var matter: com.busys8.engine.system.MatterLink = com.busys8.engine.system.NoMatter
+
     /** Phone extras, driven by the host's camera and microphone (see [applySensorSettings]). */
     val presence = Presence(clock)
     val autoOnCall = AutoOnCall(timer, clock)
@@ -71,7 +76,10 @@ class Busybar(
     private val appsMenu = AppsMenuApp(jsApps) { launchApp(it.manifest.id) }
     /** What the SETTINGS position shows (device name and addresses), set by the host. */
     @Volatile var infoLines: List<String> = emptyList()
-    private val settingsApp = SettingsApp(settings, platform, FIRMWARE_VERSION, { infoLines }, device.images, device.anims) { ble }
+    private val settingsApp = SettingsApp(
+        settings, platform, FIRMWARE_VERSION, { infoLines }, device.images, device.anims,
+        ble = { ble }, matter = { matter },
+    )
 
     val desktop = Desktop(
         input, timer, device.canvas,
@@ -92,6 +100,7 @@ class Busybar(
     init {
         platform.applyBrightness(settings.data.brightness)
         applySensorSettings()
+        smartHome.output = { matter.send(it) }
         settings.subscribe { if (it == SettingsChange.OTHER) device.post(sensorScope) { applySensorSettings() } }
         busyApp.exitToDesktop = desktop::returnToSwitchApp
         launcher.onLeave = desktop::returnToSwitchApp
@@ -146,6 +155,6 @@ class Busybar(
         const val API_VERSION = "27.14.0"
 
         /** Reported as the firmware version (/api/status/firmware, About). */
-        const val FIRMWARE_VERSION = "busy-s8-0.5.0"
+        const val FIRMWARE_VERSION = "busy-s8-0.6.0"
     }
 }

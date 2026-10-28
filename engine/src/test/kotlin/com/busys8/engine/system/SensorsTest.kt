@@ -6,6 +6,7 @@ import com.busys8.engine.timer.FileTimerStore
 import com.busys8.engine.timer.ProfileSlot
 import com.busys8.engine.timer.SnapshotState
 import com.busys8.engine.timer.TimerAppHooks
+import com.busys8.engine.timer.TimerState
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -150,5 +151,70 @@ class VadTest {
         // A fan switching on: loud at first, but the floor rises to meet it within a minute.
         activeFraction(vad, signal(60.0, noise = 0.03))
         assertTrue(activeFraction(vad, signal(3.0, noise = 0.03)) < 0.1)
+    }
+}
+
+class SmartHomeSwitchTest {
+    @get:Rule val tmp = TemporaryFolder()
+    private var now = 1_761_582_532_251L
+    private val hooks = object : TimerAppHooks {
+        override fun showTimer(app: AppConfig) {}
+        override fun exitTimer() {}
+    }
+
+    private fun setup(): Triple<BusyTimer, SmartHomeSwitch, MutableList<Boolean>> {
+        val timer = BusyTimer({ now }, FileTimerStore(tmp.newFolder()), hooks)
+        val sw = SmartHomeSwitch(timer)
+        val sent = mutableListOf<Boolean>()
+        sw.output = { sent += it }
+        return Triple(timer, sw, sent)
+    }
+
+    @Test
+    fun `the first reported state is taken without acting on it`() {
+        val (timer, sw, sent) = setup()
+        sw.handleSwitch(true)
+        assertEquals(SnapshotState.NotStarted, timer.lastKnownSnapshot.state)
+        assertEquals(true, sw.state)
+        assertTrue(sent.isEmpty())
+    }
+
+    @Test
+    fun `switch on starts the busy profile and off stops it`() {
+        val (timer, sw, sent) = setup()
+        sw.handleSwitch(false) // initial
+        sw.handleSwitch(true)
+        assertEquals(TimerState.WORK, timer.state)
+        assertTrue(timer.isRunning)
+        assertEquals(true, sw.state)
+        sw.handleSwitch(false)
+        assertEquals(TimerState.IDLE, timer.state)
+        assertEquals(false, sw.state)
+        // The timer's own events repeat the value to Matter, as the firmware does; harmless.
+        assertEquals(listOf(true, false), sent)
+    }
+
+    @Test
+    fun `the timer drives the switch when the profile has smart home on`() {
+        val (timer, sw, sent) = setup()
+        sw.handleSwitch(false)
+        assertTrue(timer.profile(ProfileSlot.BUSY).app.smartHome)
+        timer.start(ProfileSlot.BUSY)
+        assertEquals(listOf(true), sent)
+        timer.toggle() // pause
+        assertEquals(listOf(true, false), sent)
+        timer.toggle() // resume
+        assertEquals(listOf(true, false, true), sent)
+        timer.stop()
+        assertEquals(listOf(true, false, true, false), sent)
+        assertEquals(false, sw.state)
+    }
+
+    @Test
+    fun `api changes reach the matter device too`() {
+        val (_, sw, sent) = setup()
+        sw.handleSwitch(false)
+        sw.handleSwitch(true, fromMatter = false)
+        assertEquals(true, sent.last())
     }
 }

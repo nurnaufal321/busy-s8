@@ -24,6 +24,7 @@ class BusyService : Service() {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private var server: BusyServer? = null
     private var bleBridge: BleBridge? = null
+    private var matterBridge: MatterBridge? = null
     private var mdns: MdnsAdvertiser? = null
 
     override fun onCreate() {
@@ -39,6 +40,9 @@ class BusyService : Service() {
         val ble = BleBridge(this, app.bar, BusyServer.DEFAULT_PORT, scope).also { bleBridge = it }
         app.bar.ble = ble
         if (app.bar.settings.data.bleEnabled) ble.enable()
+        val matter = MatterBridge(this, app.bar, scope).also { matterBridge = it }
+        app.bar.matter = matter
+        matter.start()
         app.bar.settings.subscribe { if (it == SettingsChange.NAME) ble.rename(app.bar.settings.data.name) }
         val advertiser = MdnsAdvertiser(this, BusyServer.DEFAULT_PORT).also { mdns = it }
         scope.launch {
@@ -57,6 +61,7 @@ class BusyService : Service() {
 
     override fun onDestroy() {
         bleBridge?.disable()
+        matterBridge?.stop()
         server?.stop()
         mdns?.stop()
         scope.cancel()
