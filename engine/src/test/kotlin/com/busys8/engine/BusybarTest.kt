@@ -11,6 +11,7 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -53,6 +54,63 @@ class BusybarTest {
         val img = BufferedImage(72 * scale, 16 * scale, BufferedImage.TYPE_INT_RGB)
         for (y in 0 until 16 * scale) for (x in 0 until 72 * scale) img.setRGB(x, y, f[(y / scale) * 72 + x / scale])
         ImageIO.write(img, "png", File(previews, "$name.png"))
+    }
+
+    private fun snapBack(name: String) {
+        val b = bar.device.frames.value.back
+        val scale = 4
+        val img = BufferedImage(160 * scale, 80 * scale, BufferedImage.TYPE_INT_RGB)
+        for (y in 0 until 80 * scale) for (x in 0 until 160 * scale) img.setRGB(x, y, b[(y / scale) * 160 + x / scale])
+        ImageIO.write(img, "png", File(previews, "$name.png"))
+    }
+
+    private class FakeBle : com.busys8.engine.system.BleControl {
+        var on = false
+        override var paired = false
+        var forgotten = 0
+        override val status get() = if (on) com.busys8.engine.system.BleStatus.ADVERTISING else com.busys8.engine.system.BleStatus.READY
+        override val peerAddress: String? = null
+        override fun enable() = true.also { on = true }
+        override fun disable() = true.also { on = false }
+        override fun forget() = true.also { forgotten++; paired = false }
+    }
+
+    @Test
+    fun `settings bluetooth is the bar's pairing screen`() {
+        val ble = FakeBle()
+        bar.ble = ble
+        run(500)
+        press(InputKey.SETTINGS)
+        run(1500)
+        repeat(5) { press(InputKey.UP) } // Brightness, Sound, Sensors, Time, Network, Bluetooth
+        press(InputKey.OK)
+        run(300)
+        assertTrue("pairing mode turns Bluetooth on", ble.on)
+        assertTrue(bar.settings.data.bleEnabled)
+        snap("ble-pairing-front")
+        snapBack("ble-pairing-back")
+
+        ble.paired = true
+        run(300)
+        snap("ble-connected-front")
+        press(InputKey.BACK)
+        run(300)
+        assertTrue("paired, so Bluetooth stays on", ble.on)
+
+        press(InputKey.OK)
+        run(300)
+        snap("ble-forget-front")
+        press(InputKey.OK)
+        run(300)
+        snap("ble-confirm-front")
+        snapBack("ble-confirm-back")
+        press(InputKey.OK)
+        run(300)
+        assertEquals(1, ble.forgotten)
+        press(InputKey.BACK) // back in pairing mode, unpaired: leaving turns Bluetooth off
+        run(300)
+        assertFalse(ble.on)
+        assertFalse(bar.settings.data.bleEnabled)
     }
 
     @Test

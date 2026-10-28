@@ -106,6 +106,9 @@ class BleBridge(
 
     override val peerAddress: String? get() = peer?.address
 
+    override val paired: Boolean
+        get() = bondedAddress?.let { adapter?.getRemoteDevice(it)?.bondState == BluetoothDevice.BOND_BONDED } ?: false
+
     // ---- BleControl -------------------------------------------------------------------------
 
     @Synchronized

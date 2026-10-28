@@ -64,11 +64,12 @@ and holding about 2 s always force-quits.
 
 ## Official BUSY app (Bluetooth)
 
-Turn Bluetooth on (SETTINGS → Bluetooth on the phone, or the web UI), then add a bar in the
-official BUSY app: the phone shows up as "BUSY Bar". When you connect, Android's pairing prompt
-appears on the phone; accept it. The app then controls the phone over Bluetooth like a real bar.
-Linking a BUSY account does not work (it needs Flipper's cloud). SETTINGS → Bluetooth → Forget
-pairing removes the paired phone.
+Follow the official BUSY app's instructions: move the switch to SETTINGS and open Bluetooth.
+The phone shows "Pairing mode..." and appears in the app as "BUSY Bar". When you connect,
+Android's pairing prompt appears on the phone; accept it, and the screen shows "Connected". The
+app then controls the phone over Bluetooth like a real bar. Leaving the screen without pairing
+(or 5 minutes) turns Bluetooth off again. With a phone paired, SETTINGS → Bluetooth offers
+"Forget device". Linking a BUSY account does not work (it needs Flipper's cloud).
 
 ## JS apps
 

@@ -19,6 +19,9 @@ interface BleControl {
     /** The connected peer's address, while [status] is CONNECTED. */
     val peerAddress: String?
 
+    /** A phone is paired (bonded). */
+    val paired: Boolean
+
     /** ble_start / ble_stop / ble_forget; false when the radio refuses. */
     fun enable(): Boolean
     fun disable(): Boolean
@@ -28,6 +31,7 @@ interface BleControl {
 object NoBle : BleControl {
     override val status = BleStatus.READY
     override val peerAddress: String? = null
+    override val paired = false
     override fun enable() = false
     override fun disable() = true
     override fun forget() = false

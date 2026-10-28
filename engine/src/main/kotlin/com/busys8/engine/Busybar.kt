@@ -71,7 +71,7 @@ class Busybar(
     private val appsMenu = AppsMenuApp(jsApps) { launchApp(it.manifest.id) }
     /** What the SETTINGS position shows (device name and addresses), set by the host. */
     @Volatile var infoLines: List<String> = emptyList()
-    private val settingsApp = SettingsApp(settings, platform, FIRMWARE_VERSION, { infoLines }, { ble })
+    private val settingsApp = SettingsApp(settings, platform, FIRMWARE_VERSION, { infoLines }, device.images, device.anims) { ble }
 
     val desktop = Desktop(
         input, timer, device.canvas,
