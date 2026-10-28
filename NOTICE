@@ -17,8 +17,5 @@ Bundled libraries (in the APK):
   - quickjs-kt, Copyright dokar3: Apache-2.0 (https://github.com/dokar3/quickjs-kt)
   - QuickJS, Copyright Fabrice Bellard and Charlie Gordon: MIT
   - Ktor, kotlinx (JetBrains): Apache-2.0; JmDNS: Apache-2.0; AndroidX CameraX: Apache-2.0
-  - ML Kit face detection (Google), used for presence: proprietary, under the ML Kit Terms of
-    Service (https://developers.google.com/ml-kit/terms). It is not GPL-compatible: build for
-    yourself, but do not distribute an APK that includes it.
 
 REUSE.toml records the licence of each path.

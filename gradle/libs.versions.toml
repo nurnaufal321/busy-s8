@@ -11,7 +11,6 @@ slf4j = "2.0.17"
 jmdns = "3.5.12"
 quickjs = "1.0.15"
 camerax = "1.4.2"
-mlkit-face = "16.1.7"
 
 [libraries]
 coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "coroutines" }
@@ -32,7 +31,6 @@ slf4j-nop = { module = "org.slf4j:slf4j-nop", version.ref = "slf4j" }
 quickjs = { module = "io.github.dokar3:quickjs-kt", version.ref = "quickjs" }
 camera-camera2 = { module = "androidx.camera:camera-camera2", version.ref = "camerax" }
 camera-lifecycle = { module = "androidx.camera:camera-lifecycle", version.ref = "camerax" }
-mlkit-face = { module = "com.google.mlkit:face-detection", version.ref = "mlkit-face" }
 jmdns = { module = "org.jmdns:jmdns", version.ref = "jmdns" }
 
 [plugins]

@@ -88,7 +88,8 @@ anywhere else.
   phone's light sensor: one sample a second, a 5-sample average, lux on a log scale to 16
   levels, then the front display's brightness curve.
 - **Presence** (SETTINGS → Sensors, off by default): the front camera looks for faces about twice
-  a second with ML Kit's on-device detector; after *Away after* minutes without one, the panel goes
+  a second with Android's built-in face detector, which finds upright faces turned towards the
+  phone; after *Away after* minutes without one, the panel goes
   dark, and it lights up again when someone looks at it. Touching the phone also counts, and the
   first touch or key on a dark panel only wakes it.
 - **Auto ON CALL** (SETTINGS → Sensors, off by default): the microphone feeds a voice activity

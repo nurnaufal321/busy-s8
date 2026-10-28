@@ -1,6 +1,8 @@
 package com.busys8
 
 import android.annotation.SuppressLint
+import android.graphics.Bitmap
+import android.media.FaceDetector
 import android.media.AudioFormat
 import android.media.AudioRecord
 import android.media.MediaRecorder
@@ -14,26 +16,21 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.LifecycleOwner
 import com.busys8.engine.Busybar
 import com.busys8.engine.system.Vad
-import com.google.mlkit.vision.common.InputImage
-import com.google.mlkit.vision.face.FaceDetection
-import com.google.mlkit.vision.face.FaceDetectorOptions
 import kotlinx.coroutines.CoroutineScope
 import java.util.concurrent.Executors
 
 /**
- * Presence: the front camera at low resolution, about two frames a second, through ML Kit's
- * bundled face detector (on-device, no Play Services). Frames are analysed in memory and
- * dropped; nothing is stored or sent.
+ * Presence: the front camera at low resolution, about two frames a second, through Android's
+ * built-in [FaceDetector] (part of the platform, so the APK stays free of proprietary code).
+ * It finds upright frontal faces, which is what someone looking at the bar shows. Frames are
+ * analysed in memory as a small grayscale image and dropped; nothing is stored or sent.
  */
 class PresenceCamera(private val activity: androidx.activity.ComponentActivity, private val bar: Busybar, private val scope: CoroutineScope) {
     private val executor = Executors.newSingleThreadExecutor()
-    private val detector = FaceDetection.getClient(
-        FaceDetectorOptions.Builder()
-            .setPerformanceMode(FaceDetectorOptions.PERFORMANCE_MODE_FAST)
-            // Small faces too: the bar is seen from across a room.
-            .setMinFaceSize(0.05f)
-            .build(),
-    )
+    private val faces = arrayOfNulls<FaceDetector.Face>(MAX_FACES)
+    private var detector: FaceDetector? = null
+    private var detectorSize = 0 to 0
+    private var gray = IntArray(0)
     private var provider: ProcessCameraProvider? = null
     private var analysis: ImageAnalysis? = null
     private var lastFrameMs = 0L
@@ -71,29 +68,68 @@ class PresenceCamera(private val activity: androidx.activity.ComponentActivity, 
         analysis = null
     }
 
-    @SuppressLint("UnsafeOptInUsageError")
     private fun analyze(image: ImageProxy) {
         val now = SystemClock.uptimeMillis()
-        val media = image.image
-        if (now - lastFrameMs < FRAME_INTERVAL_MS || media == null) {
+        if (now - lastFrameMs < FRAME_INTERVAL_MS) {
             image.close()
             return
         }
         lastFrameMs = now
-        detector.process(InputImage.fromMediaImage(media, image.imageInfo.rotationDegrees))
-            .addOnSuccessListener { faces ->
-                if (faces.isNotEmpty() != sawFace) {
-                    sawFace = faces.isNotEmpty()
-                    Log.i(TAG, if (sawFace) "face seen (${faces.size})" else "no face")
-                }
-                if (faces.isNotEmpty()) bar.device.post(scope) { bar.presence.seen() }
+        val bitmap = try {
+            uprightGray(image)
+        } finally {
+            image.close()
+        }
+        // A FaceDetector is made for one image size; the size only changes with the rotation.
+        val d = detector?.takeIf { detectorSize == bitmap.width to bitmap.height }
+            ?: FaceDetector(bitmap.width, bitmap.height, MAX_FACES).also {
+                detector = it
+                detectorSize = bitmap.width to bitmap.height
+                Log.i(TAG, "detecting faces in ${bitmap.width}×${bitmap.height} frames")
             }
-            .addOnCompleteListener { image.close() }
+        val found = d.findFaces(bitmap, faces)
+        bitmap.recycle()
+        faces.fill(null)
+        if ((found > 0) != sawFace) {
+            sawFace = found > 0
+            Log.i(TAG, if (sawFace) "face seen ($found)" else "no face")
+        }
+        if (found > 0) bar.device.post(scope) { bar.presence.seen() }
+    }
+
+    /**
+     * The luma plane, halved to about 320×240 and turned upright ([ImageProxy] rotation), as an
+     * RGB_565 bitmap: the input FaceDetector wants (even width).
+     */
+    private fun uprightGray(image: ImageProxy): Bitmap {
+        val plane = image.planes[0]
+        val buf = plane.buffer
+        val stride = plane.rowStride
+        val pixel = plane.pixelStride
+        val sw = image.width / 2
+        val sh = image.height / 2
+        val rotation = image.imageInfo.rotationDegrees
+        val (w, h) = if (rotation % 180 == 0) sw to sh else sh to sw
+        val outW = w and 1.inv()
+        if (gray.size != outW * h) gray = IntArray(outW * h)
+        for (y in 0 until h) for (x in 0 until outW) {
+            // (x, y) in the upright image → (sx, sy) in the sensor's half-size image.
+            val (sx, sy) = when (rotation) {
+                90 -> y to (sh - 1 - x)
+                180 -> (sw - 1 - x) to (sh - 1 - y)
+                270 -> (sw - 1 - y) to x
+                else -> x to y
+            }
+            val v = buf.get(sy * 2 * stride + sx * 2 * pixel).toInt() and 0xFF
+            gray[y * outW + x] = (0xFF shl 24) or (v shl 16) or (v shl 8) or v
+        }
+        return Bitmap.createBitmap(gray, outW, h, Bitmap.Config.RGB_565)
     }
 
     private companion object {
         const val TAG = "Presence"
         const val FRAME_INTERVAL_MS = 500L
+        const val MAX_FACES = 3
     }
 }
 

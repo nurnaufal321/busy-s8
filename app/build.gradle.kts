@@ -52,6 +52,5 @@ dependencies {
     implementation(libs.jmdns)
     implementation(libs.camera.camera2)
     implementation(libs.camera.lifecycle)
-    implementation(libs.mlkit.face)
     testImplementation(libs.junit)
 }
