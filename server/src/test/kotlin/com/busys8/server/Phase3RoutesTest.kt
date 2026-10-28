@@ -158,3 +158,37 @@ class TimestampTest {
         assertEquals(null, parseTimestamp("not-a-timestamp"))
     }
 }
+
+class RleTest {
+    /** rle.py decompress. */
+    private fun decompress(src: ByteArray, block: Int): ByteArray {
+        val out = java.io.ByteArrayOutputStream()
+        var i = 0
+        while (i < src.size) {
+            val op = src[i++].toInt() and 0xFF
+            val n = op and 0x7F
+            if (op and 0x80 != 0) {
+                out.write(src, i, n * block)
+                i += n * block
+            } else {
+                repeat(n) { out.write(src, i, block) }
+                i += block
+            }
+        }
+        return out.toByteArray()
+    }
+
+    @Test
+    fun `rle round trips and shrinks a dark frame`() {
+        val dark = ByteArray(72 * 16 * 3)
+        val packed = rleCompress(dark, 3)!!
+        assertTrue("${packed.size} bytes", packed.size < 64)
+        assertArrayEquals(dark, decompress(packed, 3))
+
+        val rnd = java.util.Random(7)
+        val mixed = ByteArray(72 * 16 * 3) { i -> if ((i / 3) % 9 < 4) 0 else rnd.nextInt(256).toByte() }
+        rleCompress(mixed, 3)?.let { assertArrayEquals(mixed, decompress(it, 3)) }
+        val noise = ByteArray(300) { rnd.nextInt(256).toByte() }
+        assertEquals(null, rleCompress(noise, 3))
+    }
+}

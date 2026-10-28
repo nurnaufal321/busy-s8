@@ -492,23 +492,39 @@ class BleBridge(
 
     // ---- status stream ------------------------------------------------------------------------
 
-    /** ble_streaming.c: the state publisher over HM10 TX, at most one message a second. */
+    /**
+     * ble_streaming.c: the state publisher over HM10 TX, at most one message a second. Like the
+     * firmware's BLE transport (frame interval 1 s) it carries the front display, which is what
+     * the official app shows as the bar's screen; other state goes out when it changes.
+     */
     private fun startStream() {
         streamJob?.cancel()
         val encoder = StateEncoder(bar)
         streamJob = scope.launch {
-            var last: ByteArray? = null
+            var lastState: ByteArray? = null
+            var lastSeq = -1L
             while (isActive && peer != null) {
                 delay(STREAM_PERIOD_MS)
                 if (HM10_TX !in subscribed) continue
-                val state = withContext(bar.device.dispatcher) {
-                    encoder.state(StateKind.entries.filter { it != StateKind.FRAME }.mapNotNull(encoder::update))
+                val updates = withContext(bar.device.dispatcher) {
+                    val list = ArrayList<com.busys8.server.Pb.() -> Unit>()
+                    // Skip the 9-byte timestamp field when deciding whether anything changed.
+                    val others = encoder.state(StateKind.entries.filter { it != StateKind.FRAME }.mapNotNull(encoder::update))
+                    val body = others.copyOfRange(9, others.size)
+                    if (lastState == null || !body.contentEquals(lastState)) {
+                        lastState = body
+                        list += StateKind.entries.filter { it != StateKind.FRAME }.mapNotNull(encoder::update)
+                    }
+                    val seq = bar.device.frames.value.seq
+                    if (seq != lastSeq) {
+                        lastSeq = seq
+                        encoder.update(StateKind.FRAME)?.let { list += it }
+                    }
+                    list
                 }
-                // Skip the 9-byte timestamp field when deciding whether anything changed.
-                val body = state.copyOfRange(9, state.size)
-                if (last != null && body.contentEquals(last)) continue
-                last = body
-                withContext(kotlinx.coroutines.Dispatchers.IO) { sendStream(state) }
+                if (updates.isEmpty()) continue
+                val message = encoder.state(updates)
+                withContext(kotlinx.coroutines.Dispatchers.IO) { sendStream(message) }
             }
         }
     }

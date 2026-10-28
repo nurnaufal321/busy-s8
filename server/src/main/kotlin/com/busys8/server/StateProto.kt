@@ -145,9 +145,13 @@ class StateEncoder(private val bar: Busybar) {
     }
 
     /** frame.proto: the front display, RGB888 (B, G, R bytes), uncompressed. */
+    /** screen_streamer.c: the front display, RLE-compressed when that is smaller. */
     private fun frame(): Pb.() -> Unit {
         val bgr = frontBgr(bar.device.frames.value.front)
-        return { msg(10) { uint(1, 0); uint(2, 72); uint(3, 16); uint(4, 0); uint(5, 0); bytes(6, bgr) } }
+        val rle = rleCompress(bgr, 3)
+        val encoding = if (rle != null) 1 else 0 // RUN_LENGTH : PLAIN
+        val data = rle ?: bgr
+        return { msg(10) { uint(1, 0); uint(2, 72); uint(3, 16); uint(4, encoding); uint(5, 0); bytes(6, data) } }
     }
 
     private fun Pb.power() {
@@ -204,3 +208,52 @@ class StateEncoder(private val bar: Busybar) {
     /** A util/json.proto Json { compression = PLAIN; data = text } message at [field]. */
     private fun Pb.jsonMsg(field: Int, text: String) = msg(field) { bytes(2, text.toByteArray()) }
 }
+
+/**
+ * lib/toolbox/rle_encode (scripts/flipper/rle.py): blocks of [block] bytes; an opcode with bit 7
+ * set is followed by that many verbatim blocks, otherwise by one block repeated that many times.
+ * Null when the result would not be smaller, as rle_compress fails into a same-size buffer.
+ */
+fun rleCompress(src: ByteArray, block: Int): ByteArray? {
+    require(src.size % block == 0)
+    val out = java.io.ByteArrayOutputStream(src.size)
+    fun same(a: Int, b: Int) = b + block <= src.size && (0 until block).all { src[a + it] == src[b + it] }
+    var i = 0
+    while (i < src.size) {
+        var repeat = 0
+        var j = i
+        while (j < src.size && same(i, j)) {
+            repeat++
+            j += block
+        }
+        repeat = minOf(repeat, MAX_BLOCKS)
+        if (repeat < RLE_THRESHOLD) {
+            repeat = 0
+            var verbatim = 0
+            j = i
+            while (j < src.size) {
+                if (same(j, j + block)) {
+                    repeat++
+                    if (repeat > RLE_THRESHOLD) break
+                } else {
+                    verbatim += 1 + repeat
+                    repeat = 0
+                }
+                j += block
+            }
+            verbatim = minOf(verbatim + repeat, MAX_BLOCKS, (src.size - i) / block)
+            out.write(0x80 or verbatim)
+            out.write(src, i, verbatim * block)
+            i += verbatim * block
+        } else {
+            out.write(repeat)
+            out.write(src, i, block)
+            i += repeat * block
+        }
+        if (out.size() >= src.size) return null
+    }
+    return out.toByteArray()
+}
+
+private const val MAX_BLOCKS = 127
+private const val RLE_THRESHOLD = 3
