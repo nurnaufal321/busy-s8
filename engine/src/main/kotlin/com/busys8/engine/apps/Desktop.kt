@@ -147,34 +147,6 @@ class SoftOffApp : NativeApp {
     override fun render(front: Gfx, back: Gfx, nowMs: Long) = Unit
 }
 
-/**
- * Stand-in for the settings menu: scrolls [lines] (name, address) across the front display, so
- * the bar can always tell you where to point a browser.
- */
-class InfoApp(private val lines: () -> List<String>) : NativeApp {
-    override val priority = LoaderPriority.DEFAULT
-
-    override fun render(front: Gfx, back: Gfx, nowMs: Long) {
-        val text = lines().joinToString(SEPARATOR)
-        val w = front.textWidth(text, ApiFont.NORMAL)
-        if (w <= 72) {
-            front.text(text, ApiFont.NORMAL, 36, 8, COLOR, Align.CENTER)
-        } else {
-            val period = w + front.textWidth(SEPARATOR, ApiFont.NORMAL)
-            val shift = ((nowMs * SCROLL_PX_PER_S / 1000) % period).toInt()
-            front.text(text, ApiFont.NORMAL, -shift, 8, COLOR, Align.MID_LEFT)
-            front.text(text, ApiFont.NORMAL, period - shift, 8, COLOR, Align.MID_LEFT)
-        }
-        lines().forEachIndexed { i, line -> back.text(line, ApiFont.NORMAL, 4, 4 + i * 12, COLOR) }
-    }
-
-    private companion object {
-        const val COLOR = 0xFF909090.toInt()
-        const val SEPARATOR = "   "
-        const val SCROLL_PX_PER_S = 12L
-    }
-}
-
 /** Stand-in for apps that land in later phases (the APPS menu). */
 class PlaceholderApp(private val title: String, private val note: String) : NativeApp {
     override val priority = LoaderPriority.DEFAULT

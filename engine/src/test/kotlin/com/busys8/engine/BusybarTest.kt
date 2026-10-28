@@ -177,6 +177,26 @@ class BusybarTest {
     }
 
     @Test
+    fun `settings menu sets a manual brightness with the dial`() {
+        run(300)
+        press(InputKey.SETTINGS)
+        press(InputKey.OK) // Brightness
+        press(InputKey.OK) // edit Mode
+        press(InputKey.UP) // Auto → Manual
+        press(InputKey.OK)
+        press(InputKey.UP) // → Level
+        press(InputKey.OK)
+        press(InputKey.DOWN) // 60% (fake platform's auto level) → 50%
+        press(InputKey.OK)
+        run(100)
+        snap("settings-brightness")
+        assertEquals(50, bar.settings.data.brightness)
+        press(InputKey.BACK) // back to the settings list
+        press(InputKey.BACK) // not consumed at the top level
+        assertEquals(InputKey.SETTINGS, bar.desktop.switchPosition)
+    }
+
+    @Test
     fun `a paused session stays paused across a restart`() {
         run(500)
         press(InputKey.START)

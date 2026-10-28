@@ -2,7 +2,7 @@ package com.busys8.engine
 
 import com.busys8.core.BusyDevice
 import com.busys8.engine.apps.Desktop
-import com.busys8.engine.apps.InfoApp
+import com.busys8.engine.apps.SettingsApp
 import com.busys8.engine.apps.PlaceholderApp
 import com.busys8.engine.apps.SoftOffApp
 import com.busys8.engine.apps.busy.BusyApp
@@ -47,7 +47,7 @@ class Busybar(
     private val appsMenu = PlaceholderApp("APPS", "JS apps arrive in phase 4")
     /** What the SETTINGS position shows (device name and addresses), set by the host. */
     @Volatile var infoLines: List<String> = emptyList()
-    private val settingsApp = InfoApp { infoLines }
+    private val settingsApp = SettingsApp(settings, platform, FIRMWARE_VERSION) { infoLines }
 
     val desktop = Desktop(
         input, timer, device.canvas,
@@ -95,5 +95,8 @@ class Busybar(
     companion object {
         /** The BUSY Bar HTTP API version this build implements (vendor/openapi.yaml). */
         const val API_VERSION = "27.14.0"
+
+        /** Reported as the firmware version (/api/status/firmware, About). */
+        const val FIRMWARE_VERSION = "busy-s8-0.3.0"
     }
 }

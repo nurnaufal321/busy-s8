@@ -32,6 +32,7 @@ data class SettingsData(
     val autoUpdateEnd: String = "05:00",
     val smartSwitchState: Boolean = false,
     val smartSwitchStartup: String = "last",
+    val clock12h: Boolean = false,
 ) {
     companion object {
         const val DEFAULT_NAME = "BUSY Bar"

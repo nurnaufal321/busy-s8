@@ -26,7 +26,7 @@ import java.util.Base64
 import java.util.Locale
 
 /** Firmware identity reported by /api/status/firmware: this emulator, tracking API 27.14.0. */
-private const val FIRMWARE_VERSION = "busy-s8-0.3.0"
+private const val FIRMWARE_VERSION = Busybar.FIRMWARE_VERSION
 private const val FIRMWARE_TARGET = 28
 
 suspend fun ApplicationCall.respondJson(json: JsonObject) = respondText(json.toString(), ContentType.Application.Json)
