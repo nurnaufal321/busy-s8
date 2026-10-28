@@ -95,7 +95,8 @@ class SettingsApp(
         val lines = networkLines()
         val wifi = platform.wifi()
         listOfNotNull(
-            ListMenu.Action("Address", { lines.drop(1).firstOrNull() ?: "none" }) {},
+            ListMenu.Action("Name", { lines.getOrNull(1) ?: "none" }) {},
+            ListMenu.Action("Address", { lines.getOrNull(2) ?: "none" }) {},
             wifi?.let { w -> ListMenu.Action("Wi-Fi", { w.ssid }) {} },
             wifi?.let { w -> ListMenu.Action("Signal", { "${w.rssi} dBm" }) {} },
         )

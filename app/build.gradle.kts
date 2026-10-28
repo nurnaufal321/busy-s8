@@ -49,5 +49,6 @@ dependencies {
     implementation(libs.compose.foundation)
     implementation(libs.activity.compose)
     implementation(libs.slf4j.nop)
+    implementation(libs.jmdns)
     testImplementation(libs.junit)
 }

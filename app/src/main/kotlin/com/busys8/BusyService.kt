@@ -21,6 +21,7 @@ import kotlinx.coroutines.launch
 class BusyService : Service() {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private var server: BusyServer? = null
+    private var mdns: MdnsAdvertiser? = null
 
     override fun onCreate() {
         super.onCreate()
@@ -28,9 +29,14 @@ class BusyService : Service() {
         val app = BusyS8App.of(this)
         app.device.start(scope)
         server = BusyServer(app.bar, app.assetSource).also { it.start() }
+        val advertiser = MdnsAdvertiser(this, BusyServer.DEFAULT_PORT).also { mdns = it }
         scope.launch {
             while (isActive) {
-                app.bar.infoLines = listOf("BUSY S8") + localIpv4().map { "$it:${BusyServer.DEFAULT_PORT}" }
+                val ips = localIpv4()
+                val name = app.bar.settings.data.name
+                val host = MdnsAdvertiser.hostname(name)
+                app.bar.infoLines = listOf("BUSY S8", "$host.local:${BusyServer.DEFAULT_PORT}") + ips.map { "$it:${BusyServer.DEFAULT_PORT}" }
+                advertiser.advertise(app.platform.wifi()?.ipv4 ?: ips.firstOrNull(), app.platform.ids().usbMac, name)
                 delay(5000)
             }
         }
@@ -40,6 +46,7 @@ class BusyService : Service() {
 
     override fun onDestroy() {
         server?.stop()
+        mdns?.stop()
         scope.cancel()
         super.onDestroy()
     }
