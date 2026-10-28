@@ -104,10 +104,11 @@ fun Route.stubRoutes(bar: Busybar) {
                 put("detail", "")
                 putJsonObject("download") { put("speed_bytes_per_sec", 0); put("received_bytes", 0); put("total_bytes", 0) }
             }
-            putJsonObject("check") { put("available_version", ""); put("event", "none"); put("status", "none") }
+            putJsonObject("check") { put("available_version", ""); put("event", "stop"); put("status", "not_available") }
         })
     }
-    post("/api/update/check") { call.unavailable("Update server is not available") }
+    // The check "runs" and finds nothing; the stream reports it as not available.
+    post("/api/update/check") { call.replyOk() }
     get("/api/update/changelog") { call.replyError(400, "Version not found") }
     post("/api/update/install") {
         call.respondText(

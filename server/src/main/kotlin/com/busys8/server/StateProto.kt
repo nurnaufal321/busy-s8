@@ -99,9 +99,10 @@ class StateEncoder(private val bar: Busybar) {
         StateKind.BRIGHTNESS -> { { msg(3) { brightness() } } }
         StateKind.AUDIO_VOLUME -> { { msg(4) { uint(1, bar.platform.volume()) } } }
         StateKind.WIFI -> { { msg(5) { wifi() } } }
-        // update.proto: idle (EVENT_NONE, ACTION_NONE, OK) and no check performed.
+        // update.proto: idle (EVENT_NONE, ACTION_NONE, OK).
         StateKind.UPDATE_STATE -> { { msg(6) { uint(1, 6); uint(2, 5) } } }
-        StateKind.UPDATE_CHECK -> { { msg(7) { msg(2) { uint(1, 2) }; uint(3, 2) } } }
+        // A check that stopped and found nothing: CheckState { STOP, unavailable: NOT_AVAILABLE }.
+        StateKind.UPDATE_CHECK -> { { msg(7) { msg(2) { uint(1, 0) }; uint(3, 1) } } }
         StateKind.TIMEZONE -> { { msg(8) { timezone() } } }
         StateKind.MATTER -> { { msg(9) { msg(2) {} } } }
         StateKind.FRAME -> frame()

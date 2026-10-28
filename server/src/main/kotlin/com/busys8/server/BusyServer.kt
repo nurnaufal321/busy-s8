@@ -75,6 +75,7 @@ fun Application.module(bar: Busybar, assets: AssetSource) {
         appsRoutes(bar)
         stubRoutes(bar)
         statusStream(bar, hub)
+        webUi(assets)
         inputRoutes(bar)
 
         get("/openapi.yaml") {
