@@ -1,6 +1,7 @@
 package com.busys8.server
 
 import com.busys8.engine.Busybar
+import com.busys8.engine.jsapps.JsRun
 import com.busys8.engine.system.AccessMode
 import com.busys8.engine.system.ApiTokens
 import io.ktor.http.HttpMethod
@@ -8,6 +9,7 @@ import io.ktor.server.application.ApplicationCall
 import io.ktor.server.application.Application
 import io.ktor.server.application.ApplicationCallPipeline
 import io.ktor.server.application.call
+import io.ktor.server.request.ApplicationRequest
 import io.ktor.server.request.header
 import io.ktor.server.request.httpMethod
 import io.ktor.server.request.path
@@ -19,8 +21,8 @@ enum class AccessGrant { ALLOWLIST, LOCAL, OPEN, PASSWORD, TOKEN }
 val AccessGrantKey = AttributeKey<AccessGrant>("AccessGrant")
 val AccessTokenKey = AttributeKey<String>("AccessToken")
 
-/** Header JS apps' fetch adds (js_runner); requests carrying it are limited to the JS allowlist. */
-const val JS_FETCH_HEADER = "X-BUSY-JS-App"
+/** http_api_is_request_from_js: JS apps' fetch adds `X-busybar-fetch: js`; such requests are limited to the JS allowlist. */
+fun ApplicationRequest.isFromJs() = header(JsRun.FETCH_HEADER)?.equals(JsRun.FETCH_HEADER_VALUE, ignoreCase = true) == true
 
 /** API version reported by /api/version; requests may pin the major via X-API-Sem-Ver. */
 const val API_SEMVER = Busybar.API_VERSION
@@ -79,7 +81,7 @@ fun Application.installFirmwareAuth(bar: Busybar) {
 private fun grant(call: ApplicationCall, api: String, bar: Busybar): AccessGrant? {
     val method = call.request.httpMethod
     if (ALWAYS_ALLOWED.any { (p, m) -> p == api && method in m }) return AccessGrant.ALLOWLIST
-    if (call.request.header(JS_FETCH_HEADER) != null && JS_ALLOWED.none { (p, exact, m) -> method in m && (api == p || !exact && api.startsWith("$p/")) }) {
+    if (call.request.isFromJs() && JS_ALLOWED.none { (p, exact, m) -> method in m && (api == p || !exact && api.startsWith("$p/")) }) {
         return null
     }
     if (isLoopback(call.request.local.remoteAddress)) return AccessGrant.LOCAL

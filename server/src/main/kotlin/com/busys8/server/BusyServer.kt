@@ -36,6 +36,7 @@ class BusyServer(private val bar: Busybar, private val assets: AssetSource, priv
     private var engine: EmbeddedServer<*, *>? = null
 
     fun start() {
+        bar.localOrigin = "http://127.0.0.1:$port"
         engine = embeddedServer(CIO, port = port, host = "0.0.0.0") { module(bar, assets) }.start(wait = false)
     }
 

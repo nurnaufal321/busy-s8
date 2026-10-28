@@ -28,9 +28,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
-import java.io.ByteArrayOutputStream
 import java.io.File
-import java.util.zip.GZIPOutputStream
 
 class Phase3RoutesTest {
     @get:Rule val tmp = TemporaryFolder()
@@ -149,28 +147,6 @@ class Phase3RoutesTest {
         assertArrayEquals(byteArrayOf(0x08, 0xAC.toByte(), 0x02, 0x10, 0x01, 0x1A, 0x03, 0x0A, 0x01, 0x61, 0x22, 0x00), bytes)
     }
 
-    /** A minimal ustar writer for test packages. */
-    private fun tarGz(vararg files: Pair<String, String>): ByteArray {
-        val tar = ByteArrayOutputStream()
-        for ((name, content) in files) {
-            val data = content.toByteArray()
-            val h = ByteArray(512)
-            name.toByteArray().copyInto(h, 0)
-            "0000644\u0000".toByteArray().copyInto(h, 100)
-            "%011o\u0000".format(data.size).toByteArray().copyInto(h, 124)
-            "%011o\u0000".format(0).toByteArray().copyInto(h, 136)
-            "        ".toByteArray().copyInto(h, 148)
-            h[156] = '0'.code.toByte()
-            "ustar\u000000".toByteArray().copyInto(h, 257)
-            val sum = h.sumOf { it.toInt() and 0xFF }
-            "%06o\u0000 ".format(sum).toByteArray().copyInto(h, 148)
-            tar.write(h)
-            tar.write(data)
-            tar.write(ByteArray((512 - data.size % 512) % 512))
-        }
-        tar.write(ByteArray(1024))
-        return ByteArrayOutputStream().also { out -> GZIPOutputStream(out).use { it.write(tar.toByteArray()) } }.toByteArray()
-    }
 }
 
 class TimestampTest {

@@ -11,17 +11,16 @@ import io.ktor.server.routing.delete
 import io.ktor.server.routing.get
 import io.ktor.server.routing.post
 import io.ktor.server.routing.put
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 
-/**
- * /api/apps/... (http_api/api_apps.c): staging, installing, listing, removing and settings.
- * Launch and quit need the JS runtime and answer 503 until it exists.
- */
+/** /api/apps/... (http_api/api_apps.c): staging, installing, listing, launching, removing and settings. */
 fun Route.appsRoutes(bar: Busybar) {
     val apps = bar.jsApps
+    val onDevice = bar.device.dispatcher
 
     post("/api/apps/stage") {
         val bytes = call.bodyBytes() ?: return@post call.replyError(413, "Payload Too Large")
@@ -56,20 +55,30 @@ fun Route.appsRoutes(bar: Busybar) {
 
     delete("/api/apps") {
         val id = call.request.queryParameters["app_id"]?.takeIf { JsApps.ID.matches(it) } ?: return@delete call.replyError(400, "Bad Request")
+        if (!apps.hasApp(id)) return@delete call.replyError(404, "Not Found")
+        withContext(onDevice) { if (bar.launcher.runningAppId == id) bar.launcher.quit() }
         if (apps.remove(id)) call.replyOk() else call.replyError(404, "Not Found")
     }
 
     post("/api/apps/launch") {
         val id = call.request.queryParameters["app_id"]?.takeIf { JsApps.ID.matches(it) } ?: return@post call.replyError(400, "Bad Request")
-        if (!apps.hasApp(id)) return@post call.replyError(404, "Not Found")
-        call.replyError(503, "failed to launch application")
+        when (withContext(onDevice) { bar.launchApp(id) }) {
+            Busybar.LaunchResult.OK -> call.replyOk()
+            Busybar.LaunchResult.NOT_FOUND -> call.replyError(404, "Not Found")
+            Busybar.LaunchResult.API_MISMATCH -> call.replyError(409, "API version mismatch, please update firmware")
+            Busybar.LaunchResult.LOW_PRIORITY -> call.replyError(409, "not started due to low priority")
+        }
     }
 
-    post("/api/apps/quit") { call.replyError(409, "application is not running") }
+    post("/api/apps/quit") {
+        if (withContext(onDevice) { bar.launcher.quit() }) call.replyOk() else call.replyError(409, "application is not running")
+    }
 
     get("/api/apps/settings") {
         val id = call.request.queryParameters["app_id"]?.takeIf { JsApps.ID.matches(it) } ?: return@get call.replyError(400, "Bad Request")
         if (!apps.hasApp(id)) return@get call.replyError(404, "Not Found")
+        // An app may only read its own settings, and only while it runs.
+        if (call.request.isFromJs() && bar.launcher.runningAppId != id) return@get call.replyError(403, "Forbidden")
         val settings = apps.settings(id) ?: return@get call.replyError(404, "Not Found")
         call.respondJson(settings)
     }

@@ -4,7 +4,9 @@ import android.content.Context
 import android.net.wifi.WifiManager
 import android.util.Log
 import java.net.Inet4Address
+import java.net.Inet6Address
 import java.net.InetAddress
+import java.net.NetworkInterface
 import java.util.concurrent.Executors
 import javax.jmdns.JmDNS
 import javax.jmdns.ServiceInfo
@@ -17,13 +19,16 @@ import javax.jmdns.ServiceInfo
  * - an `_http._tcp` service named `busybar-<usb mac hex>` with TXT `path=/` and `name=<name>`,
  *   which busy-hacs and other tools discover.
  *
- * Uses JmDNS because Android's NsdManager cannot publish a custom hostname.
+ * Uses JmDNS because Android's NsdManager cannot publish a custom hostname. One JmDNS instance
+ * answers for one address, so a second one on the interface's IPv6 link-local address answers
+ * AAAA queries: without it macOS waits 5 s for an IPv6 answer on every `.local` lookup.
  */
 class MdnsAdvertiser(context: Context, private val port: Int) {
     private val wifi = context.applicationContext.getSystemService(WifiManager::class.java)
     private val lock = wifi.createMulticastLock("busy-s8-mdns").apply { setReferenceCounted(false) }
     private val executor = Executors.newSingleThreadExecutor()
     private var jmdns: JmDNS? = null
+    private var jmdns6: JmDNS? = null
     private var announced: Triple<String, String, String>? = null
 
     /** (Re)announces when the address, name or MAC changed; cheap to call repeatedly. */
@@ -47,16 +52,28 @@ class MdnsAdvertiser(context: Context, private val port: Int) {
             announced = key
             Log.i(TAG, "announced ${hostname(deviceName)}.local and ${service.name} on $ip")
         }.onFailure { Log.w(TAG, "mDNS announce failed", it) }
+        linkLocal6(ip)?.let { ip6 ->
+            runCatching { jmdns6 = JmDNS.create(ip6, hostname(deviceName)) }
+                .onSuccess { Log.i(TAG, "announced ${hostname(deviceName)}.local on $ip6") }
+                .onFailure { Log.w(TAG, "mDNS IPv6 announce failed", it) }
+        }
     }
 
     fun stop() = executor.execute { close() }
 
     private fun close() {
         jmdns?.let { runCatching { it.unregisterAllServices(); it.close() } }
+        jmdns6?.let { runCatching { it.close() } }
         jmdns = null
+        jmdns6 = null
         announced = null
         if (lock.isHeld) lock.release()
     }
+
+    /** The IPv6 link-local address on the interface that carries [ip4]. */
+    private fun linkLocal6(ip4: Inet4Address): Inet6Address? =
+        NetworkInterface.getByInetAddress(ip4)?.inetAddresses?.toList()
+            ?.firstOrNull { it is Inet6Address && it.isLinkLocalAddress } as? Inet6Address
 
     companion object {
         private const val TAG = "Mdns"

@@ -4,6 +4,7 @@ import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.Service
+import android.util.Log
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
@@ -28,6 +29,10 @@ class BusyService : Service() {
         startForeground(NOTIFICATION_ID, notification())
         val app = BusyS8App.of(this)
         app.device.start(scope)
+        app.bar.jsConsole = { id, level, text ->
+            val priority = when (level) { "error" -> Log.ERROR; "warn" -> Log.WARN; "info" -> Log.INFO; else -> Log.DEBUG }
+            Log.println(priority, "JsApp", "[$id] $text")
+        }
         server = BusyServer(app.bar, app.assetSource).also { it.start() }
         val advertiser = MdnsAdvertiser(this, BusyServer.DEFAULT_PORT).also { mdns = it }
         scope.launch {

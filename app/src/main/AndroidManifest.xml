@@ -14,6 +14,7 @@
     <application
         android:name=".BusyS8App"
         android:allowBackup="false"
+        android:usesCleartextTraffic="true"
         android:label="BUSY S8"
         android:theme="@android:style/Theme.Black.NoTitleBar.Fullscreen">
 

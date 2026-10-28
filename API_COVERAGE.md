@@ -15,9 +15,9 @@ Also served: `GET /openapi.yaml`, the web UI at `/`, and 405 + `Allow` for unsup
 | Account | GET | `/api/account/status` | getAccountStatus | stubbed | disconnected |
 | Apps | DELETE | `/api/apps` | removeApp | implemented |  |
 | Apps | POST | `/api/apps/install` | installApp | implemented |  |
-| Apps | POST | `/api/apps/launch` | launchApp | stubbed | 503 until phase 4 |
+| Apps | POST | `/api/apps/launch` | launchApp | implemented | 409 while a session holds the screen |
 | Apps | GET | `/api/apps/list` | listApps | implemented |  |
-| Apps | POST | `/api/apps/quit` | quitApp | stubbed | 409 until phase 4 |
+| Apps | POST | `/api/apps/quit` | quitApp | implemented |  |
 | Apps | DELETE | `/api/apps/settings` | resetAppSettings | implemented |  |
 | Apps | GET | `/api/apps/settings` | getAppSettings | implemented |  |
 | Apps | PUT | `/api/apps/settings` | setAppSettings | implemented |  |
@@ -89,7 +89,7 @@ Also served: `GET /openapi.yaml`, the web UI at `/`, and 405 + `Allow` for unsup
 | Wi-Fi | GET | `/api/wifi/networks` | getWifiNetworks | stubbed | current network only |
 | Wi-Fi | GET | `/api/wifi/status` |  | implemented |  |
 
-52 implemented, 29 stubbed, 0 missing, of 81 operations.
+54 implemented, 27 stubbed, 0 missing, of 81 operations.
 
 ## Conformance
 
@@ -104,4 +104,6 @@ The suite's wrong-method check (405 + `Allow`) passes for all 40 candidate paths
 - **Access** defaults to `enabled` (open on the LAN): a real bar is unlocked over USB first. Requests from `127.0.0.1` (adb forwards, JS apps) are treated like USB and always allowed.
 - **Status stream** sends the front display only, uncompressed (`PLAIN`), like the firmware's streamer; power and Wi-Fi are polled every 5 s.
 - **No MQTT/cloud sync** of timer snapshots and profiles; Matter (`trigger_smart_home`) is stored but has no effect.
-- **Uploaded `.anim`/`.image` files** in the firmware's own binary formats are not decoded yet; PNG uploads and the bundled animations work. `.snd` and WAV sounds play.
+- **Binary `.anim` files** (what JS apps ship) are decoded; uploaded `.image` files (LVGL binary) are not yet. PNG uploads and the bundled animations work. `.snd` and WAV sounds play.
+- **JS apps run on QuickJS**, not JerryScript, with the firmware's globals reimplemented (`engine/src/main/resources/jsrunner/prelude.js`): `fetch` (with `Headers`, `Request`, `Response`, a minimal `ReadableStream`, `AbortController`), `URL`/`URLSearchParams`, `listen("input")`, `localStorage`, timers, `console`, plus `TextEncoder`/`TextDecoder`. Apps get ES2023 rather than JerryScript's subset, so code that runs here may not run on a bar. `fetch`'s `dispatcher: {connect: {useDeviceKey: true}}` is ignored: there is no device key, so apps that call Flipper's signed cloud APIs (weather-app) show their offline screen.
+- **App heap** is a fixed 32 MB for every app; the manifest's `heap_size` is not enforced.

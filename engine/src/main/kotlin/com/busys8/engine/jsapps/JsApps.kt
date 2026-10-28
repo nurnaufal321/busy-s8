@@ -187,7 +187,7 @@ class JsApps(private val userAssets: File, private val dataDir: File, private va
     }
 
     /** The firmware only checks that the app does not need a newer API than it has. */
-    private fun isCompatible(required: String): Boolean {
+    fun isCompatible(required: String): Boolean {
         fun parts(v: String) = v.split('.').map { it.toIntOrNull() ?: 0 }
         val need = parts(required)
         val have = parts(apiVersion)
@@ -211,21 +211,33 @@ class JsApps(private val userAssets: File, private val dataDir: File, private va
             input.use { readTar(it, into) }
         }.getOrDefault(false)
 
+        /** InputStream.readNBytes, which Android 9 lacks: up to [n] bytes, fewer only at the end. */
+        private fun readUpTo(input: InputStream, n: Int): ByteArray {
+            val buf = ByteArray(n)
+            var got = 0
+            while (got < n) {
+                val r = input.read(buf, got, n - got)
+                if (r < 0) break
+                got += r
+            }
+            return if (got == n) buf else buf.copyOf(got)
+        }
+
         private fun readTar(input: InputStream, into: File): Boolean {
             val root = into.canonicalPath
             var longName: String? = null
             var paxPath: String? = null
             var entries = 0
             while (true) {
-                val header = input.readNBytes(512)
+                val header = readUpTo(input, 512)
                 if (header.size < 512 || header.all { it == 0.toByte() }) break
                 fun field(off: Int, len: Int) = String(header, off, len, Charsets.UTF_8).trimEnd('\u0000', ' ')
                 val size = field(124, 12).trim().ifEmpty { "0" }.toLong(8)
                 val type = header[156].toInt().toChar()
                 val prefix = if (field(257, 6).startsWith("ustar")) field(345, 155) else ""
                 val name = longName ?: paxPath ?: listOf(prefix, field(0, 100)).filter { it.isNotEmpty() }.joinToString("/")
-                val data = input.readNBytes(size.toInt())
-                input.skipNBytes((512 - size % 512) % 512)
+                val data = readUpTo(input, size.toInt())
+                readUpTo(input, ((512 - size % 512) % 512).toInt())
                 when (type) {
                     'L' -> { longName = String(data, Charsets.UTF_8).trimEnd('\u0000'); continue }
                     'x' -> {

@@ -19,7 +19,7 @@ Unofficial; not affiliated with Flipper Devices. See [NOTICE](NOTICE).
 | 2 | `busy_timer` port, BUSY app, `/api/busy/*`, `/api/input`, phone controls, burn-in protection | done |
 | 3 | Rest of the API, status stream, bundled web UI, mDNS, setup and settings screens | done |
 | 3b | Bluetooth bridge for the official BUSY app (best effort) | |
-| 4 | QuickJS runtime for JS apps | |
+| 4 | QuickJS runtime for JS apps, APPS menu, binary `.anim` | done |
 | 5 | Auto brightness, presence, auto ON CALL | |
 
 Endpoint-level status: [API_COVERAGE.md](API_COVERAGE.md). Upstream versions:
@@ -30,7 +30,7 @@ Endpoint-level status: [API_COVERAGE.md](API_COVERAGE.md). Upstream versions:
 | Module | Kind | Contents |
 |---|---|---|
 | `core` | JVM | Framebuffers, LVGL font reader, animation player, draw-element parser, canvas service, renderer |
-| `engine` | JVM | `busy_timer` port, input service, desktop/mode switch, BUSY app and other built-in apps |
+| `engine` | JVM | `busy_timer` port, input service, desktop/mode switch, BUSY app and other built-in apps, QuickJS app runtime |
 | `server` | JVM | Ktor (CIO) HTTP API, protobuf status stream, web UI, firmware-style auth |
 | `app` | Android | Kiosk activity, Compose LED panel, phone controls, Android platform (battery, Wi-Fi, clock, brightness, volume), mDNS |
 | `vendor/` | data | Pinned upstream assets, web UI, OpenAPI spec, protobufs |
@@ -46,7 +46,8 @@ emulator. `./gradlew :engine:test` also writes previews of the BUSY app's screen
 |---|---|
 | Volume up / down, or drag left / right | Dial counter-clockwise / clockwise: move through menus, change values, ±5 min in a session |
 | Tap | START (start, pause, resume) |
-| Long-press | BACK (stop a session; resume when paused) |
+| Long-press | BACK (stop a session; resume when paused; leave a menu or app) |
+| Keep holding, about 2 s | Long BACK: force-quits a JS app |
 | Swipe down / up | Mode switch to the next / previous position: BUSY, CUSTOM, OFF, APPS, SETTINGS |
 | Wave over the proximity sensor | OK (dial button: skip the current interval) |
 | Bixby key, if One UI delivers it | Mode switch, next position |
@@ -57,12 +58,32 @@ long-press stops editing or goes back; leaving the timer setup saves it. CUSTOM 
 profile, by default an endless KEEP OUT timer; change it under its own Setup. On the emulator, a keyboard works too: arrows, Enter = OK,
 Space = START, Esc/Backspace = BACK, 1–5 = switch positions.
 
+APPS lists the installed JS apps; turn the dial to pick one and tap to start it. A running app
+gets the dial, tap (START), long-press (BACK) and the proximity wave (OK); most apps quit on BACK,
+and holding about 2 s always force-quits.
+
+## JS apps
+
+Apps built with [busy-cli](https://www.npmjs.com/package/@busy-app/cli) install and run as on a
+real bar, from the app's folder:
+
+```bash
+npx busy-cli app install --addr busybar.local:8080
+```
+
+```bash
+npx busy-cli app run --addr busybar.local:8080
+```
+
+The upstream clock app runs unmodified. The weather app runs too, but shows its offline
+screen: its forecast comes from Flipper's cloud API, which needs a real bar's device key.
+
 The panel guards against AMOLED burn-in: the LED grid orbits by half an LED every 2 minutes,
 and static content dims to 40% after 5 minutes.
 
 ## Build
 
-Requirements: JDK 17, Android SDK with platform 28 and 35 (`ANDROID_HOME` or `local.properties`).
+Requirements: JDK 17, Android SDK with platform 28 and 36 (`ANDROID_HOME` or `local.properties`).
 
 ```bash
 ./gradlew test

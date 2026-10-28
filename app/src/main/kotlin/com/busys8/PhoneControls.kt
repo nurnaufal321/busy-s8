@@ -11,6 +11,8 @@ import android.view.KeyEvent
 import com.busys8.engine.Busybar
 import com.busys8.engine.input.InputKey
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 
@@ -22,6 +24,7 @@ import kotlinx.coroutines.flow.StateFlow
  * | Volume up / down          | Encoder clockwise / counter-clockwise |
  * | Tap                       | START                                 |
  * | Long-press                | BACK                                  |
+ * | Hold about 2 s            | Long BACK (force-quits a JS app)      |
  * | Swipe down / up           | Mode switch to the next / previous position |
  * | Drag left / right         | Encoder, one click per 60 dp          |
  * | Proximity-sensor wave     | OK (encoder button)                   |
@@ -41,6 +44,15 @@ class PhoneControls(private val bar: Busybar, private val scope: CoroutineScope)
     fun tap() = toggle(InputKey.START)
 
     fun longPress() = toggle(InputKey.BACK)
+
+    /** Holds BACK long enough for the input service to fire LONG, then lets go. */
+    fun holdBack() {
+        post { bar.input.press(InputKey.BACK) }
+        scope.launch {
+            delay(HOLD_MS)
+            post { bar.input.release(InputKey.BACK) }
+        }
+    }
 
     /** One encoder click: [dir] > 0 is clockwise. */
     fun dial(dir: Int) = toggle(if (dir > 0) InputKey.UP else InputKey.DOWN)
@@ -125,5 +137,7 @@ class PhoneControls(private val bar: Busybar, private val scope: CoroutineScope)
         /** Samsung's Bixby key on One UI 1.0. */
         const val KEYCODE_BIXBY = 1082
         const val WAVE_MAX_MS = 1000L
+        /** Past InputService's LONG threshold (2 × 150 ms). */
+        const val HOLD_MS = 450L
     }
 }

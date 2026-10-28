@@ -7,7 +7,9 @@ kotlin { jvmToolchain(17) }
 
 dependencies {
     api(project(":core"))
+    implementation(libs.quickjs)
     testImplementation(libs.junit)
+    testImplementation(libs.coroutines.test)
 }
 
 tasks.test {

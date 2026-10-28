@@ -13,4 +13,9 @@ Copyright 2024-2026 Flipper FZCO:
     (vendor/OFL-1.1.txt)
   - Lana Pixel font, Copyright 2020-2023 eishiya: OFL-1.1
 
+Bundled libraries (in the APK):
+  - quickjs-kt, Copyright dokar3: Apache-2.0 (https://github.com/dokar3/quickjs-kt)
+  - QuickJS, Copyright Fabrice Bellard and Charlie Gordon: MIT
+  - Ktor, kotlinx (JetBrains): Apache-2.0; JmDNS: Apache-2.0
+
 REUSE.toml records the licence of each path.

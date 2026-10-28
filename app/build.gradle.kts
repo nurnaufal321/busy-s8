@@ -6,7 +6,7 @@ plugins {
 
 android {
     namespace = "com.busys8"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.busys8"

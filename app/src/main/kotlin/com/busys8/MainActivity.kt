@@ -94,7 +94,8 @@ class MainActivity : ComponentActivity() {
 }
 
 /**
- * Tap = START, long-press = BACK (fires while held), vertical swipe = mode switch, horizontal
+ * Tap = START, long-press = BACK (fires while held), holding on = a long BACK (force-quits a JS
+ * app), vertical swipe = mode switch, horizontal
  * drag = the dial: one click per [DIAL_STEP_DP] travelled, right = clockwise, so a long drag
  * scrolls like turning the encoder.
  */
@@ -106,17 +107,24 @@ private suspend fun androidx.compose.ui.input.pointer.PointerInputScope.detectBa
         val slop = viewConfiguration.touchSlop
         var moved = Offset.Zero
         var longFired = false
+        var holdFired = false
         var dialing = false
         var dialCarry = 0f
         while (true) {
-            val stillForLong = !longFired && moved.getDistance() <= slop
-            val waitMs = LONG_PRESS_MS - (SystemClock.uptimeMillis() - down.uptimeMillis)
-            val event = if (stillForLong && waitMs > 0) withTimeoutOrNull(waitMs) { awaitPointerEvent() }
-            else if (stillForLong) null
+            val still = moved.getDistance() <= slop && !holdFired
+            val deadline = if (longFired) HOLD_BACK_MS else LONG_PRESS_MS
+            val waitMs = deadline - (SystemClock.uptimeMillis() - down.uptimeMillis)
+            val event = if (still && waitMs > 0) withTimeoutOrNull(waitMs) { awaitPointerEvent() }
+            else if (still) null
             else awaitPointerEvent()
             if (event == null) {
-                longFired = true
-                controls.longPress()
+                if (!longFired) {
+                    longFired = true
+                    controls.longPress()
+                } else {
+                    holdFired = true
+                    controls.holdBack()
+                }
                 continue
             }
             val change = event.changes.first()
@@ -178,6 +186,7 @@ private fun SwitchStrip(controls: PhoneControls) {
 }
 
 private const val LONG_PRESS_MS = 600L
+private const val HOLD_BACK_MS = 2000L
 private const val SWIPE_MIN_DP = 60
 private const val DIAL_STEP_DP = 60
 private const val STRIP_VISIBLE_MS = 1500L

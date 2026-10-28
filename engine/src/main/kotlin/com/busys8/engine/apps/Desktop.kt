@@ -25,6 +25,9 @@ interface NativeApp {
     /** Returns true if consumed. */
     fun onInput(event: InputEvent, nowMs: Long): Boolean = false
 
+    /** Input seen before the API canvas (GuiLayerIdSystem); returns true if consumed. */
+    fun onSystemInput(event: InputEvent, nowMs: Long): Boolean = false
+
     fun tick(nowMs: Long) {}
 
     fun render(front: Gfx, back: Gfx, nowMs: Long)
@@ -89,6 +92,9 @@ class Desktop(
     /** Called by the BUSY app when it leaves a timer it was brought forward for. */
     fun returnToSwitchApp() = switchTo(apps(switchPosition), reenter = true)
 
+    /** desktop_replace_current_app: puts [app] in front until it hands back. */
+    fun replaceCurrentApp(app: NativeApp) = switchTo(app, reenter = true)
+
     override fun tick(nowMs: Long) {
         if (!started) {
             started = true
@@ -116,6 +122,7 @@ class Desktop(
             if (event.type == InputType.SHORT) setSwitch(event.key)
             return
         }
+        if (current.onSystemInput(event, clock())) return
         if (canvas.isOpen) {
             if (event.key == InputKey.BACK && event.type == InputType.SHORT) canvas.backPressed()
             return
@@ -145,15 +152,4 @@ interface BusyAppHost {
 class SoftOffApp : NativeApp {
     override val priority = LoaderPriority.STUB
     override fun render(front: Gfx, back: Gfx, nowMs: Long) = Unit
-}
-
-/** Stand-in for apps that land in later phases (the APPS menu). */
-class PlaceholderApp(private val title: String, private val note: String) : NativeApp {
-    override val priority = LoaderPriority.DEFAULT
-
-    override fun render(front: Gfx, back: Gfx, nowMs: Long) {
-        front.text(title, ApiFont.NORMAL, 36, 8, 0xFFFFFFFF.toInt(), Align.CENTER)
-        back.text(title, ApiFont.LARGE, 74, 30, 0xFFFFFFFF.toInt(), Align.CENTER)
-        back.text(note, ApiFont.SMALL, 74, 48, 0xFF808080.toInt(), Align.CENTER)
-    }
 }

@@ -54,7 +54,10 @@ class AnimFile(val frames: List<RawImage>, val fps: Int, val sections: Map<Strin
     }
 }
 
-/** Loads and caches animations by device path (e.g. `/ext/apps_assets/busy/animations/x.anim`). */
+/**
+ * Loads and caches animations by device path (e.g. `/ext/apps_assets/busy/animations/x.anim`):
+ * bundled frame zips, or binary `.anim` files such as the ones JS apps ship ([AnimBin]).
+ */
 class AnimLoader(private val storage: DeviceStorage, private val decoder: ImageDecoder) {
     private val cache = object : LinkedHashMap<String, AnimFile>(16, 0.75f, true) {
         override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, AnimFile>) = size > 48
@@ -62,7 +65,7 @@ class AnimLoader(private val storage: DeviceStorage, private val decoder: ImageD
 
     @Synchronized
     fun load(path: String): AnimFile? =
-        cache[path] ?: storage.read(path)?.let { AnimFile.parseZip(it, decoder) }?.also { cache[path] = it }
+        cache[path] ?: storage.read(path)?.let { if (AnimBin.isAnim(it)) AnimBin.parse(it) else AnimFile.parseZip(it, decoder) }?.also { cache[path] = it }
 }
 
 /**

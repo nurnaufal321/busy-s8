@@ -41,7 +41,7 @@ names back to the bundled sources.
 | `core/.../Canvas.kt` | `services/canvas/canvas.c` | Ownership, priority, deferral (1.5 s), timeouts |
 | `core/.../CanvasRenderer.kt` | `services/canvas/canvas_widgets.c`, `gui/modules/{label,countdown}.c` | Anchor placement, label metrics, circular scroll, countdown format |
 | `core/.../Xpm.kt` | `lib/xpm` behaviour as documented in `assets.yaml` | XPM2 subset |
-| `core/.../Anim.kt` | `gui/modules/anim_player.c`, `lib/anim_file` | Plays the frame zips directly; section and loop semantics |
+| `core/.../Anim.kt` | `gui/modules/anim_player.c`, `lib/anim_file` | Plays frame zips and binary `.anim`; section and loop semantics |
 | `engine/.../timer/*` | `services/busy_timer/*` | State machine, snapshot/profile JSON, defaults, persistence; no MQTT/Matter |
 | `engine/.../input/Input.kt` | `services/input/input.c` | Short/long/repeat timing |
 | `engine/.../apps/Desktop.kt` | `services/desktop`, `services/canvas` input handling, `busy_timer_util.c` | Mode switch → app, canvas input precedence |
@@ -51,4 +51,7 @@ names back to the bundled sources.
 | `server/.../SystemRoutes.kt`, `StorageRoutes.kt`, `AppsRoutes.kt`, `StubRoutes.kt` | `http_api/api_*.c` | Status formats (incl. the uptime quirk), storage, audio (.snd = raw PCM), apps |
 | `server/.../StateProto.kt`, `StatusStream.kt` | `services/state_publisher`, `api_status_streaming.c`, busybar-protobuf | Hand-written proto3 encoder; enable / send-all protocol, 4 clients, 100 ms frames |
 | `engine/.../jsapps/JsApps.kt` | `services/js_app_installer`, `lib/js_app` | tar/tgz staging, install keys, manifest and settings schema |
+| `engine/.../jsapps/JsRuntime.kt`, `resources/jsrunner/prelude.js` | `services/js_runner/*` | Globals, input mapping, `X-busybar-fetch: js`, `localhost` → own API, localStorage file format, end-when-idle; QuickJS (quickjs-kt) instead of JerryScript |
+| `engine/.../apps/JsLauncher.kt` | `system/js_app_launcher`, `main/apps_menu` | Resume-mode launch, low-priority refusal, long BACK force-quit, canvas cleanup; menu lists apps by name |
+| `core/.../AnimBin.kt` | `documentation/File Formats.dox.md`, `scripts/seq2anim.py`, `scripts/flipper/rle.py` | Binary `.anim` decoder: mask RLE/bitmap, pixel RAW/RLE/QOI-like |
 | `engine/.../apps/ListMenu.kt`, `SettingsApp.kt`, BUSY setup scenes | `gui/modules/var_item_list.c`, `main/settings_menu`, `busy_scene_setup*.c` | Dial/OK/BACK editing; settings pages the phone can serve |
