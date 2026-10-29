@@ -16,11 +16,13 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import com.busys8.core.Display
 import com.busys8.core.Frame
+import com.busys8.engine.system.ClockStrip
 import kotlinx.coroutines.delay
 import kotlin.math.min
 
 /**
- * The 72×16 RGB front display as rounded-square LEDs, centred on the panel in landscape.
+ * The 72×16 RGB front display as rounded-square LEDs at the top of the panel in landscape, and
+ * under it, at the same LED size, the date and time ([ClockStrip]) when [showClock] is set.
  *
  * The phone has one screen and it faces the room, like the bar's front display. The back
  * display (which faces the bar's owner) is still rendered and served over the API, just not
@@ -29,7 +31,7 @@ import kotlin.math.min
  * grid keeps out of [EDGE_MARGIN_FRACTION] of the height.
  */
 @Composable
-fun LedPanel(frame: Frame) {
+fun LedPanel(frame: Frame, showClock: Boolean, zone: () -> String, clock12h: () -> Boolean) {
     var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
     LaunchedEffect(Unit) {
         while (true) {
@@ -42,24 +44,33 @@ fun LedPanel(frame: Frame) {
     val dim = BurnInGuard.dimLevel(now, lastChange.atMs)
     val (orbitX, orbitY) = BurnInGuard.orbitStep(now)
 
+    val clock = if (showClock) ClockStrip.render(now, zone(), clock12h()) else null
+
     Canvas(Modifier.fillMaxSize().background(Color.Black)) {
         val usableH = size.height * (1 - 2 * EDGE_MARGIN_FRACTION)
-        // One spare LED of width leaves room for the orbit's ±half-pitch moves.
-        val pitch = min(size.width / (Display.FRONT.width + 1), usableH / Display.FRONT.height).toInt().toFloat()
+        val w = Display.FRONT.width
+        val rows = Display.FRONT.height + CLOCK_GAP + ClockStrip.HEIGHT
+        // One spare LED of width leaves room for the orbit's ±half-pitch moves. The layout stays
+        // the same with the clock hidden, so the picture never jumps.
+        val pitch = min(size.width / (w + 1), usableH / rows).toInt().toFloat()
         val ledSize = pitch * LED_FILL
-        val left = (size.width - pitch * Display.FRONT.width) / 2 + orbitX * pitch / 2
-        val top = (size.height - pitch * Display.FRONT.height) / 2 + orbitY * pitch / 2
+        val left = (size.width - pitch * w) / 2 + orbitX * pitch / 2
+        val top = (size.height - pitch * rows) / 2 + orbitY * pitch / 2
         val corner = CornerRadius(ledSize * 0.25f)
-        for (y in 0 until Display.FRONT.height) for (x in 0 until Display.FRONT.width) {
-            val c = frame.front[y * Display.FRONT.width + x]
-            if (c and 0xFFFFFF == 0) continue
+        fun led(x: Int, y: Int, c: Int) {
+            if (c and 0xFFFFFF == 0) return
             drawRoundRect(
-                color = Color(c),
+                color = Color(c or 0xFF000000.toInt()),
                 topLeft = Offset(left + x * pitch + (pitch - ledSize) / 2, top + y * pitch + (pitch - ledSize) / 2),
                 size = Size(ledSize, ledSize),
                 cornerRadius = corner,
                 alpha = dim,
             )
+        }
+        for (y in 0 until Display.FRONT.height) for (x in 0 until w) led(x, y, frame.front[y * w + x])
+        if (clock != null) {
+            val y0 = Display.FRONT.height + CLOCK_GAP
+            for (y in 0 until ClockStrip.HEIGHT) for (x in 0 until ClockStrip.WIDTH) led(x, y0 + y, clock[y * ClockStrip.WIDTH + x])
         }
     }
 }
@@ -80,3 +91,5 @@ private class LastChange {
 
 private const val EDGE_MARGIN_FRACTION = 0.08f
 private const val LED_FILL = 0.82f
+/** Unlit rows between the picture and the clock. */
+private const val CLOCK_GAP = 1

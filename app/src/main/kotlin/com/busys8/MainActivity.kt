@@ -84,7 +84,14 @@ class MainActivity : ComponentActivity() {
             val frame by app.device.frames.collectAsState()
             val state by sensing.collectAsState()
             Box(Modifier.fillMaxSize().background(Color.Black).pointerInput(Unit) { detectBarGestures(controls) }) {
-                if (!state.away) LedPanel(frame)
+                if (!state.away) {
+                    LedPanel(
+                        frame,
+                        showClock = app.bar.desktop.switchPosition != InputKey.OFF,
+                        zone = app.platform::timeZone,
+                        clock12h = { app.bar.settings.data.clock12h },
+                    )
+                }
                 SwitchStrip(controls)
                 SensorDots(state)
             }
