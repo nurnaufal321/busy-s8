@@ -104,7 +104,8 @@ python3 tools/usb-bridge.py busybar.local:8080
 ```
 
 Then choose Connect BUSY Bar → Via USB cable in the app. The address lasts until reboot
-(`sudo ifconfig lo0 -alias 10.0.4.20` removes it).
+(`sudo ifconfig lo0 -alias 10.0.4.20` removes it). To have both start by themselves (the address
+at boot, the relay at login), run `tools/macos/install.sh`; `tools/macos/uninstall.sh` undoes it.
 
 ## JS apps
 
@@ -208,6 +209,30 @@ Edit the commits in `upstream/fetch.sh` and `UPSTREAM.md`, then:
 ```
 
 `sync.sh` needs Python 3 with `pyyaml` and `colorlog` (for the firmware's OpenAPI merge script).
+
+## Credits
+
+BUSY S8 only emulates the BUSY Bar; nearly everything it does was designed by other people.
+
+- **The BUSY Bar** is created by the [BUSY](https://busy.app) team at
+  [Flipper Devices](https://flipperdevices.com) (Flipper FZCO): the device, its
+  [firmware](https://github.com/busy-app/busybar-firmware) (whose timer, canvas, input, JS
+  runner, Bluetooth and smart-home services are ported here), its web UI (bundled unchanged),
+  its images, animations, sounds and themes, the HTTP API and protobufs, the official phone and
+  desktop apps, [clock-app](https://github.com/busy-app/clock-app) and
+  [weather-app](https://github.com/busy-app/weather-app), busy-cli, busylib-py/ts and the Home
+  Assistant integration. Go and buy one: <https://go.busy.app/products/bar>.
+- **Fonts**: BUSY pixel fonts derived from [Ark Pixel Font](https://github.com/TakWolf/ark-pixel-font)
+  by TakWolf, and [Lana Pixel](https://eishiya.itch.io/lana-pixel) by eishiya (OFL-1.1).
+- **[rs-matter](https://github.com/project-chip/rs-matter)** (Project CHIP Authors) for the Matter
+  device, **[quickjs-kt](https://github.com/dokar3/quickjs-kt)** (dokar3) and
+  **[QuickJS](https://bellard.org/quickjs/)** (Fabrice Bellard, Charlie Gordon) for JS apps,
+  **[Ktor](https://ktor.io)** and kotlinx (JetBrains), **[JmDNS](https://github.com/jmdns/jmdns)**,
+  and AndroidX CameraX.
+- **[Open-Meteo](https://open-meteo.com)** for the weather data the phone serves to weather-app.
+
+Licences and attributions are in [NOTICE](NOTICE) and [REUSE.toml](REUSE.toml); pinned
+versions in [UPSTREAM.md](UPSTREAM.md).
 
 ## Licence
 
