@@ -19,10 +19,12 @@ import com.busys8.core.Frame
 import com.busys8.engine.system.ClockStrip
 import kotlinx.coroutines.delay
 import kotlin.math.min
+import kotlin.math.roundToInt
 
 /**
  * The 72×16 RGB front display as rounded-square LEDs at the top of the panel in landscape, and
  * under it, at the same LED size, the date and time ([ClockStrip]) when [showClock] is set.
+ * While the top is dragged sideways ([dragPx]) the picture follows the finger in whole LEDs.
  *
  * The phone has one screen and it faces the room, like the bar's front display. The back
  * display (which faces the bar's owner) is still rendered and served over the API, just not
@@ -31,7 +33,7 @@ import kotlin.math.min
  * grid keeps out of [EDGE_MARGIN_FRACTION] of the height.
  */
 @Composable
-fun LedPanel(frame: Frame, showClock: Boolean, zone: () -> String, clock12h: () -> Boolean) {
+fun LedPanel(frame: Frame, showClock: Boolean, zone: () -> String, clock12h: () -> Boolean, dragPx: Float = 0f) {
     var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
     LaunchedEffect(Unit) {
         while (true) {
@@ -47,15 +49,11 @@ fun LedPanel(frame: Frame, showClock: Boolean, zone: () -> String, clock12h: () 
     val clock = if (showClock) ClockStrip.render(now, zone(), clock12h()) else null
 
     Canvas(Modifier.fillMaxSize().background(Color.Black)) {
-        val usableH = size.height * (1 - 2 * EDGE_MARGIN_FRACTION)
-        val w = Display.FRONT.width
-        val rows = Display.FRONT.height + CLOCK_GAP + ClockStrip.HEIGHT
-        // One spare LED of width leaves room for the orbit's ±half-pitch moves. The layout stays
-        // the same with the clock hidden, so the picture never jumps.
-        val pitch = min(size.width / (w + 1), usableH / rows).toInt().toFloat()
+        val layout = PanelLayout(size.width, size.height)
+        val pitch = layout.pitch
         val ledSize = pitch * LED_FILL
-        val left = (size.width - pitch * w) / 2 + orbitX * pitch / 2
-        val top = (size.height - pitch * rows) / 2 + orbitY * pitch / 2
+        val left = layout.left + orbitX * pitch / 2
+        val top = layout.top + orbitY * pitch / 2
         val corner = CornerRadius(ledSize * 0.25f)
         fun led(x: Int, y: Int, c: Int) {
             if (c and 0xFFFFFF == 0) return
@@ -67,12 +65,33 @@ fun LedPanel(frame: Frame, showClock: Boolean, zone: () -> String, clock12h: () 
                 alpha = dim,
             )
         }
-        for (y in 0 until Display.FRONT.height) for (x in 0 until w) led(x, y, frame.front[y * w + x])
+        val w = Display.FRONT.width
+        val shift = (dragPx / pitch).roundToInt()
+        for (y in 0 until Display.FRONT.height) for (x in 0 until w) {
+            val sx = x - shift
+            if (sx in 0 until w) led(x, y, frame.front[y * w + sx])
+        }
         if (clock != null) {
             val y0 = Display.FRONT.height + CLOCK_GAP
             for (y in 0 until ClockStrip.HEIGHT) for (x in 0 until ClockStrip.WIDTH) led(x, y0 + y, clock[y * ClockStrip.WIDTH + x])
         }
     }
+}
+
+/**
+ * Where the LED grid sits on a [width]×[height] screen, shared by the drawing and the gestures:
+ * the picture's 16 rows, a gap row, then the clock strip, all at one pitch.
+ */
+class PanelLayout(width: Float, height: Float) {
+    private val rows = Display.FRONT.height + CLOCK_GAP + ClockStrip.HEIGHT
+    // One spare LED of width leaves room for the orbit's ±half-pitch moves. The layout stays the
+    // same with the clock hidden, so the picture never jumps.
+    val pitch = min(width / (Display.FRONT.width + 1), height * (1 - 2 * EDGE_MARGIN_FRACTION) / rows).toInt().toFloat()
+    val left = (width - pitch * Display.FRONT.width) / 2
+    val top = (height - pitch * rows) / 2
+
+    /** Touches above this y (the middle of the gap row) belong to the picture, below to the clock. */
+    val splitY = top + (Display.FRONT.height + CLOCK_GAP / 2f) * pitch
 }
 
 /** Remembers when the front display content last changed. */

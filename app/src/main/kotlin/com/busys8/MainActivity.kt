@@ -22,6 +22,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -83,13 +84,15 @@ class MainActivity : ComponentActivity() {
         setContent {
             val frame by app.device.frames.collectAsState()
             val state by sensing.collectAsState()
-            Box(Modifier.fillMaxSize().background(Color.Black).pointerInput(Unit) { detectBarGestures(controls) }) {
+            var dragPx by remember { mutableFloatStateOf(0f) }
+            Box(Modifier.fillMaxSize().background(Color.Black).pointerInput(Unit) { detectBarGestures(controls) { dragPx = it } }) {
                 if (!state.away) {
                     LedPanel(
                         frame,
                         showClock = app.bar.desktop.switchPosition != InputKey.OFF,
                         zone = app.platform::timeZone,
                         clock12h = { app.bar.settings.data.clock12h },
+                        dragPx = dragPx,
                     )
                 }
                 SwitchStrip(controls)
@@ -133,7 +136,15 @@ class MainActivity : ComponentActivity() {
  * the dial: one click per [DIAL_STEP_DP] travelled, up = clockwise, so a long drag scrolls like
  * turning the encoder.
  */
-private suspend fun androidx.compose.ui.input.pointer.PointerInputScope.detectBarGestures(controls: PhoneControls) {
+/**
+ * The panel's touch controls (see [PhoneControls]). A sideways swipe that starts on the picture
+ * changes status, reporting the drag to [onStatusDrag] so the picture can follow; one that starts
+ * on the clock strip moves the mode switch.
+ */
+private suspend fun androidx.compose.ui.input.pointer.PointerInputScope.detectBarGestures(
+    controls: PhoneControls,
+    onStatusDrag: (Float) -> Unit,
+) {
     val swipeMin = SWIPE_MIN_DP.dp.toPx()
     val dialStep = DIAL_STEP_DP.dp.toPx()
     awaitEachGesture {
@@ -144,6 +155,7 @@ private suspend fun androidx.compose.ui.input.pointer.PointerInputScope.detectBa
             return@awaitEachGesture
         }
         val slop = viewConfiguration.touchSlop
+        val onPicture = down.position.y < PanelLayout(size.width.toFloat(), size.height.toFloat()).splitY
         var moved = Offset.Zero
         var longFired = false
         var holdFired = false
@@ -175,6 +187,7 @@ private suspend fun androidx.compose.ui.input.pointer.PointerInputScope.detectBa
             } else if (dialing) {
                 dialCarry += delta.y
             }
+            if (onPicture && !longFired && !dialing && abs(moved.x) > slop) onStatusDrag(moved.x)
             if (dialing) {
                 // Up is clockwise (screen y grows downwards).
                 while (abs(dialCarry) >= dialStep) {
@@ -185,9 +198,12 @@ private suspend fun androidx.compose.ui.input.pointer.PointerInputScope.detectBa
             }
             if (!change.pressed) break
         }
+        onStatusDrag(0f)
         if (longFired || dialing) return@awaitEachGesture
         when {
-            abs(moved.x) >= swipeMin && abs(moved.x) > 2 * abs(moved.y) -> controls.moveSwitch(if (moved.x > 0) 1 else -1)
+            abs(moved.x) >= swipeMin && abs(moved.x) > 2 * abs(moved.y) ->
+                // Swiping left brings the next status in from the right.
+                if (onPicture) controls.swipeStatus(if (moved.x < 0) 1 else -1) else controls.moveSwitch(if (moved.x > 0) 1 else -1)
             moved.getDistance() <= slop -> controls.tap()
         }
     }

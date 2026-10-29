@@ -118,6 +118,13 @@ class Busybar(
         autoOnCall.enabled = d.autoOnCall
     }
 
+    /**
+     * The phone's status swipe: the next ([dir] > 0) or previous theme for the CUSTOM profile on
+     * CUSTOM, otherwise the BUSY one; the switch stays where it is. Device thread.
+     */
+    fun cycleStatus(dir: Int): BusyApp.Status =
+        busyApp.cycleTheme(if (desktop.switchPosition == InputKey.CUSTOM) ProfileSlot.CUSTOM else ProfileSlot.BUSY, dir)
+
     enum class LaunchResult { OK, NOT_FOUND, API_MISMATCH, LOW_PRIORITY }
 
     /** js_app_launcher_start in resume mode (/api/apps/launch, the APPS menu). Device thread. */

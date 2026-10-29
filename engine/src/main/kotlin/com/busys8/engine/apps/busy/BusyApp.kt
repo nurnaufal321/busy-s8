@@ -105,6 +105,39 @@ class BusyApp(
         scene.renderBack(back, nowMs)
     }
 
+    /** The default theme, then the theme folders sorted by their theme.json "order" (busy_theme.c). */
+    private fun themes(): List<String> = listOf(AppConfig.THEME_DEFAULT) +
+        storage.list("/ext/apps_assets/busy/themes")?.filter { it.second }?.map { it.first }
+            ?.sortedBy { name ->
+                storage.read(BusyAssets.theme(name))?.decodeToString()?.let {
+                    runCatching { Json.parseToJsonElement(it).jsonObject["order"]?.jsonPrimitive?.content?.toInt() }.getOrNull()
+                } ?: Int.MAX_VALUE
+            }.orEmpty()
+
+    /** A status picked from outside the setup screens (the phone's swipe). */
+    data class Status(val theme: String, val index: Int, val count: Int)
+
+    /**
+     * Moves [profileSlot]'s theme [dir] steps through [themes], wrapping, and saves it like
+     * Setup → Theme. A running session switches to it at once. Device thread.
+     */
+    fun cycleTheme(profileSlot: ProfileSlot, dir: Int): Status {
+        val themes = themes()
+        val running = timer.state != TimerState.IDLE
+        val currentTheme = if (running) timer.appConfig.theme else timer.profile(profileSlot).app.theme
+        val index = (themes.indexOf(currentTheme).coerceAtLeast(0) + dir).mod(themes.size)
+        val theme = themes[index]
+        val p = timer.profile(profileSlot)
+        timer.setPreset(profileSlot, p.timer, p.app.copy(theme = theme))
+        if (running) {
+            timer.setSessionTheme(theme)
+            config = timer.appConfig
+        } else if (profileSlot == slot) {
+            config = timer.profile(slot).app
+        }
+        return Status(theme, index, themes.size)
+    }
+
     private fun go(next: Scene, nowMs: Long) {
         scene.exit()
         anims.reset()
@@ -285,7 +318,7 @@ class BusyApp(
      * OK/START keeps it, BACK leaves the theme unchanged.
      */
     private inner class SetupThemeScene : Scene() {
-        private val themes = listOf(AppConfig.THEME_DEFAULT) + themeNames()
+        private val themes = themes()
         private var index = themes.indexOf(timer.profile(slot).app.theme).coerceAtLeast(0)
 
         override fun input(key: InputKey, nowMs: Long): Boolean {
@@ -315,15 +348,6 @@ class BusyApp(
             g.text(themes[index].replace('_', ' ').uppercase(), ApiFont.LARGE, 74, 40, WHITE, Align.CENTER)
             g.text("${index + 1}/${themes.size}", ApiFont.SMALL, 74, 62, 0xFF909090.toInt(), Align.CENTER)
         }
-
-        /** Theme folders sorted by their theme.json "order" (busy_theme.c). */
-        private fun themeNames(): List<String> =
-            storage.list("/ext/apps_assets/busy/themes")?.filter { it.second }?.map { it.first }
-                ?.sortedBy { name ->
-                    storage.read(BusyAssets.theme(name))?.decodeToString()?.let {
-                        runCatching { Json.parseToJsonElement(it).jsonObject["order"]?.jsonPrimitive?.content?.toInt() }.getOrNull()
-                    } ?: Int.MAX_VALUE
-                }.orEmpty()
     }
 
     /** busy_scene_overview: work/rest lengths over an animation, then the timer after 2.25 s. */
@@ -380,12 +404,14 @@ class BusyApp(
         private var pausedSinceMs = 0L
         private var labelCycleStartMs = 0L
         private var themeBg: String? = null
+        private var themeBgFor = ""
 
         override val priority get() = if (state != TimerState.IDLE) LoaderPriority.BLOCKING else LoaderPriority.PASSTHROUGH
         override val blankFront get() = state != TimerState.WORK || paused
 
         override fun enter(nowMs: Long) {
             themeBg = themeBackground(config.theme)
+            themeBgFor = config.theme
             labelCycleStartMs = nowMs
             // Consumed here rather than on exit: a restored session can enter this scene twice
             // at startup, and starting again would resume a paused timer.
@@ -454,6 +480,11 @@ class BusyApp(
             val infinite = mode == TimerMode.INFINITE
             val total = elapsedS + remainingS
             val progress = if (total == 0L) 0f else elapsedS.toFloat() / total
+            if (config.theme != themeBgFor) {
+                // The status changed mid-session.
+                themeBg = themeBackground(config.theme)
+                themeBgFor = config.theme
+            }
             val bg = themeBg
             val custom = bg != null && state == TimerState.WORK
             if (custom) {

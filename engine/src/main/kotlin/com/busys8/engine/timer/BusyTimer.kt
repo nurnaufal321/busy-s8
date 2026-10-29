@@ -163,6 +163,13 @@ class BusyTimer(
         notify(TimerEvent.ProfileChanged(slot, updated))
     }
 
+    /** Changes the running session's theme (the status it shows) and publishes the snapshot. */
+    fun setSessionTheme(theme: String) {
+        if (state == TimerState.IDLE || app.theme == theme) return
+        app = app.copy(theme = theme)
+        captureAndPublish()
+    }
+
     /** The poll timer: advances the clock while running (not in infinite mode). */
     fun poll() {
         if (isRunning && mode != TimerMode.INFINITE) update(clock())

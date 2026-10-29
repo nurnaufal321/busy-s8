@@ -38,13 +38,7 @@ object ClockStrip {
                 for (y in y1 until y2) for (x in x1 until x2) set(x0 + x, y, TIME)
             }
         }
-        fun text(s: String, x0: Int, y0: Int, c: Int) {
-            var x = x0
-            for (ch in s) {
-                SMALL[ch]?.let { rows -> for (y in 0 until 5) for (dx in 0 until 4) if (rows[y * 4 + dx] == '1') set(x + dx, y0 + y, c) }
-                x += 5
-            }
-        }
+        fun text(s: String, x0: Int, y0: Int, c: Int) = drawText(out, WIDTH, HEIGHT, s, x0, y0, c)
 
         digit(hh[0], 1)
         digit(hh[1], 9)
@@ -56,6 +50,21 @@ object ClockStrip {
         text(t.dayOfMonth.toString().padStart(2, '0') + " " + MONTHS[t.monthValue - 1], 42, 7, DATE)
         if (clock12h) text(if (t.hour < 12) "AM" else "PM", 61, 0, MERIDIEM)
         return out
+    }
+
+    /** Draws [s] in the 4×5 font into [out] (RGB per LED, [w]×[h], row-major), clipped. */
+    private fun drawText(out: IntArray, w: Int, h: Int, s: String, x0: Int, y0: Int, color: Int) {
+        var x = x0
+        for (ch in s.uppercase()) {
+            SMALL[ch]?.let { rows ->
+                for (y in 0 until 5) for (dx in 0 until 4) {
+                    val px = x + dx
+                    val py = y0 + y
+                    if (rows[y * 4 + dx] == '1' && px in 0 until w && py in 0 until h) out[py * w + px] = color
+                }
+            }
+            x += 5
+        }
     }
 
     /** Segment rectangles in a 7×12 cell: x1, y1, x2, y2 (exclusive). */
@@ -81,6 +90,6 @@ object ClockStrip {
         'M' to "10011111111110011001", 'N' to "10011101101110011001", 'O' to "01101001100110010110",
         'P' to "11101001111010001000", 'R' to "11101001111010101001", 'S' to "01111000011000011110",
         'T' to "11110110011001100110", 'U' to "10011001100110010110", 'V' to "10011001100101100110",
-        'W' to "10011001111111111001", 'Y' to "10011001011001100110",
+        'W' to "10011001111111111001", 'Y' to "10011001011001100110", 'K' to "10011010110010101001",
     )
 }

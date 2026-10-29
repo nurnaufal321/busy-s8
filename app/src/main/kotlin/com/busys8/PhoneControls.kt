@@ -25,7 +25,8 @@ import kotlinx.coroutines.flow.StateFlow
  * | Tap                       | START                                 |
  * | Long-press                | BACK                                  |
  * | Hold about 2 s            | Long BACK (force-quits a JS app)      |
- * | Swipe right / left        | Mode switch to the next / previous position |
+ * | Swipe left / right on top | Status (theme): next / previous       |
+ * | Swipe right / left below  | Mode switch to the next / previous position |
  * | Drag up / down            | Encoder, one click per 60 dp          |
  * | Proximity-sensor wave     | OK (encoder button)                   |
  * | Bixby key (if delivered)  | Mode switch, next position, wrapping  |
@@ -40,6 +41,9 @@ class PhoneControls(private val bar: Busybar, private val scope: CoroutineScope)
     val switchShownAt: StateFlow<Long> = _switchShownAt
 
     val switchPosition get() = bar.desktop.switchPosition
+
+    /** [dir] > 0 is the next status. Saved to the BUSY (or, on CUSTOM, CUSTOM) profile. */
+    fun swipeStatus(dir: Int) = post { bar.cycleStatus(dir) }
 
     /** Wakes a panel blanked by presence; true if it was dark (the input is then used up). */
     fun wakeIfAway(): Boolean {

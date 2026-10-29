@@ -167,6 +167,44 @@ class BusybarTest {
     }
 
     @Test
+    fun `swiping the status cycles themes, saves them and restyles a running session`() {
+        run(500)
+        fun cycle(dir: Int) = runBlocking(bar.device.dispatcher) { bar.cycleStatus(dir) }
+        fun saved() = runBlocking(bar.device.dispatcher) { bar.timer.profile(com.busys8.engine.timer.ProfileSlot.BUSY).app.theme }
+
+        // Idle on BUSY: the profile's theme changes, wrapping both ways.
+        val first = cycle(1)
+        assertEquals(1, first.index)
+        assertEquals(first.theme, saved())
+        val back = cycle(-1)
+        assertEquals(com.busys8.engine.timer.AppConfig.THEME_DEFAULT, back.theme)
+        val last = cycle(-1)
+        assertEquals(last.count - 1, last.index)
+        cycle(1)
+
+        // Running: the session takes the new theme at once, and the snapshot carries it.
+        press(InputKey.START)
+        run(3000)
+        snap("status-swipe-1-default")
+        val before = bar.device.frames.value.front.copyOf()
+        val onAir = generateSequence { cycle(1) }.first { it.theme == "on_air" }
+        run(1000)
+        snap("status-swipe-2-on-air")
+        assertEquals("on_air", saved())
+        assertEquals("on_air", bar.timer.lastKnownSnapshot.app.theme)
+        assertFalse(before.contentEquals(bar.device.frames.value.front))
+        assertTrue(onAir.index > 0)
+
+        // On APPS the BUSY profile changes and the switch stays put.
+        runBlocking(bar.device.dispatcher) { bar.timer.stop() }
+        press(InputKey.APPS)
+        run(500)
+        val other = cycle(1)
+        assertEquals(other.theme, saved())
+        assertEquals(InputKey.APPS, bar.desktop.switchPosition)
+    }
+
+    @Test
     fun `switch positions change app and a remote snapshot brings the timer forward`() {
         run(500)
         press(InputKey.OFF)
