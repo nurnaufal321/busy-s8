@@ -53,12 +53,16 @@ class MainActivity : ComponentActivity() {
     /** What the sensing loop shows: panel blanked while away, and which sensors are live. */
     private val sensing = MutableStateFlow(SensingState())
 
+    /** Whether the kiosk policies are on (SETTINGS → Kiosk). */
+    private var kiosk = true
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-        Kiosk.apply(this)
         BusyService.start(this)
         val app = BusyS8App.of(this)
+        kiosk = app.bar.settings.data.kiosk
+        Kiosk.apply(this, kiosk)
         controls = PhoneControls(app.bar, lifecycleScope)
         proximity = controls.ProximityWave(this)
         camera = PresenceCamera(this, app.bar, lifecycleScope)
@@ -68,6 +72,7 @@ class MainActivity : ComponentActivity() {
             while (true) {
                 val d = app.bar.settings.data
                 val resumed = lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)
+                if (d.kiosk != kiosk) setKiosk(d.kiosk)
                 if (d.presence && resumed) camera.start() else camera.stop()
                 if (d.autoOnCall && resumed) voice.start() else voice.stop()
                 sensing.value = SensingState(away = app.bar.presence.away, camera = camera.running, mic = voice.running)
@@ -101,11 +106,25 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    /** SETTINGS → Kiosk. */
+    private fun setKiosk(on: Boolean) {
+        kiosk = on
+        Kiosk.apply(this, on)
+        if (on) {
+            Kiosk.enterLockTask(this)
+            hideSystemUi()
+        } else {
+            runCatching { stopLockTask() }
+            @Suppress("DEPRECATION")
+            window.decorView.systemUiVisibility = View.SYSTEM_UI_FLAG_VISIBLE
+        }
+    }
+
     override fun dispatchKeyEvent(event: KeyEvent): Boolean = controls.onKey(event) || super.dispatchKeyEvent(event)
 
     override fun onResume() {
         super.onResume()
-        Kiosk.enterLockTask(this)
+        if (kiosk) Kiosk.enterLockTask(this)
         proximity.start()
     }
 
@@ -118,7 +137,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onWindowFocusChanged(hasFocus: Boolean) {
         super.onWindowFocusChanged(hasFocus)
-        if (hasFocus) hideSystemUi()
+        if (hasFocus && kiosk) hideSystemUi()
     }
 
     @Suppress("DEPRECATION") // WindowInsetsController needs API 30; this is API 28.

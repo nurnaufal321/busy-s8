@@ -18,17 +18,21 @@ class AdminReceiver : DeviceAdminReceiver()
 /**
  * Device-owner policies that turn the phone into an appliance. Every call is a no-op unless
  * this app is device owner, so the APK also runs as a normal app on a dev device.
+ *
+ * SETTINGS → Kiosk off undoes them ([release]) without giving up device owner, so switching it
+ * back on (from the BUSY S8 launcher icon) needs no adb.
  */
 object Kiosk {
     private const val TAG = "Kiosk"
 
-    fun apply(context: Context) {
+    fun apply(context: Context, enabled: Boolean) {
         val dpm = context.getSystemService(DevicePolicyManager::class.java)
         if (!dpm.isDeviceOwnerApp(context.packageName)) {
             Log.i(TAG, "not device owner; kiosk policies skipped")
             return
         }
         val admin = ComponentName(context, AdminReceiver::class.java)
+        if (!enabled) return release(context, dpm, admin)
         // Settings too: on Samsung its Bluetooth pairing prompt is a Settings window, and lock
         // task would otherwise block it, so a phone could never pair over Bluetooth.
         dpm.setLockTaskPackages(admin, arrayOf(context.packageName, "com.android.settings"))
@@ -47,6 +51,17 @@ object Kiosk {
         for (permission in listOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.CAMERA, Manifest.permission.RECORD_AUDIO)) {
             dpm.setPermissionGrantState(admin, context.packageName, permission, DevicePolicyManager.PERMISSION_GRANT_STATE_GRANTED)
         }
+    }
+
+    /** Back to an ordinary phone: status bar, lock screen, Samsung's home screen, no pinning. */
+    private fun release(context: Context, dpm: DevicePolicyManager, admin: ComponentName) {
+        // Leaving the allow-list also ends lock task for a running task.
+        dpm.setLockTaskPackages(admin, emptyArray())
+        dpm.setKeyguardDisabled(admin, false)
+        dpm.setStatusBarDisabled(admin, false)
+        dpm.setGlobalSetting(admin, Settings.Global.STAY_ON_WHILE_PLUGGED_IN, "0")
+        dpm.clearPackagePersistentPreferredActivities(admin, context.packageName)
+        Log.i(TAG, "kiosk released")
     }
 
     fun enterLockTask(activity: Activity) {

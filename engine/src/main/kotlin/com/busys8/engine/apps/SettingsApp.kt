@@ -41,6 +41,7 @@ class SettingsApp(
             ListMenu.Action("Network") { page = network() },
             ListMenu.Action("Bluetooth") { openBluetooth = true },
             ListMenu.Action("Smart home") { page = smartHome() },
+            ListMenu.Switch("Kiosk", { settings.data.kiosk }, { on -> settings.update(SettingsChange.OTHER) { it.copy(kiosk = on) } }),
             ListMenu.Action("About") { page = about() },
         )
     }

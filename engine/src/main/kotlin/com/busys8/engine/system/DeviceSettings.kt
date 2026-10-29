@@ -40,6 +40,8 @@ data class SettingsData(
     val autoOnCall: Boolean = false,
     /** ble settings: off by default, as on the bar. */
     val bleEnabled: Boolean = false,
+    /** Phone only: pin the panel as the home screen (device owner). Off gives the phone back. */
+    val kiosk: Boolean = true,
 ) {
     companion object {
         const val DEFAULT_NAME = "BUSY Bar"
